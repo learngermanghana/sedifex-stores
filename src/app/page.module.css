@@ -366,6 +366,19 @@
   gap: 6px;
   align-items: center;
   justify-items: start;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+}
+
+.mapPin:focus-visible {
+  outline: 2px solid #c084fc;
+  outline-offset: 6px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 8px rgba(192, 132, 252, 0.12);
 }
 
 .pinDot {
@@ -374,6 +387,29 @@
   border-radius: 999px;
   background: #c084fc;
   box-shadow: 0 0 0 8px rgba(192, 132, 252, 0.16), 0 14px 26px -14px #a855f7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #0f172a;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.mapPin:hover .pinDot,
+.mapPin:focus-visible .pinDot {
+  transform: scale(1.05);
+  box-shadow: 0 0 0 10px rgba(192, 132, 252, 0.2), 0 18px 32px -16px #a855f7;
+}
+
+.clusterPin .pinDot {
+  width: 26px;
+  height: 26px;
+}
+
+.clusterDot {
+  background: linear-gradient(135deg, #c084fc, #818cf8);
+  color: #0b1224;
+  box-shadow: 0 0 0 12px rgba(129, 140, 248, 0.2), 0 18px 32px -16px rgba(99, 102, 241, 0.6);
 }
 
 .pinLabel {

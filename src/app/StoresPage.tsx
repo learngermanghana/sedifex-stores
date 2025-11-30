@@ -1,10 +1,8 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { collection, getDocs } from 'firebase/firestore'
 
 import styles from './page.module.css'
-import { db } from '@/lib/firebaseClient'
 
 const PAGE_SIZE = 24
 const SKELETON_CARD_COUNT = 6
@@ -26,6 +24,8 @@ type StoreRecord = {
   publicDescription: string | null
   createdAt: Date | null
   updatedAt: Date | null
+  latitude: number | null
+  longitude: number | null
 }
 
 function toNullableString(value: unknown): string | null {
@@ -48,6 +48,15 @@ function toDate(value: unknown): Date | null {
   return null
 }
 
+function toNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+  return null
+}
+
 function mapStore(data: Record<string, unknown>, id: string): StoreRecord {
   return {
     id,
@@ -64,13 +73,18 @@ function mapStore(data: Record<string, unknown>, id: string): StoreRecord {
     publicDescription: toNullableString(data.publicDescription),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
+    latitude: toNumber(data.latitude),
+    longitude: toNumber(data.longitude),
   }
 }
 
 function formatLocation(store: StoreRecord): string {
-  const locationParts = [store.addressLine1, store.city, store.country].filter(
-    Boolean,
-  )
+  const locationParts = [
+    store.addressLine1,
+    store.city,
+    store.region,
+    store.country,
+  ].filter(Boolean)
   return locationParts.join(', ')
 }
 
@@ -253,26 +267,85 @@ function SkeletonMap() {
   )
 }
 
-function computeStablePosition(text: string, salt: number) {
-  let hash = 0
-  for (let i = 0; i < text.length; i++) {
-    hash = (hash * 31 + text.charCodeAt(i) + salt * 17) % 100000
-  }
+function hasCoordinates(store: StoreRecord): store is StoreRecord & {
+  latitude: number
+  longitude: number
+} {
+  return (
+    typeof store.latitude === 'number' &&
+    typeof store.longitude === 'number' &&
+    Number.isFinite(store.latitude) &&
+    Number.isFinite(store.longitude)
+  )
+}
 
-  const x = 12 + (hash % 76)
-  const y = 12 + ((hash / 100) % 76)
+function projectCoordinates(latitude: number, longitude: number) {
+  const x = ((longitude + 180) / 360) * 100
+  const y = ((90 - latitude) / 180) * 100
 
-  return { x, y }
+  const clamp = (value: number) => Math.min(97, Math.max(3, value))
+  return { x: clamp(x), y: clamp(y) }
+}
+
+type ProjectedPin = {
+  store: StoreRecord
+  location: string
+  x: number
+  y: number
+}
+
+function clusterPins(pins: ProjectedPin[], threshold = 4) {
+  const clusters: Array<{
+    id: string
+    x: number
+    y: number
+    pins: ProjectedPin[]
+  }> = []
+
+  pins.forEach(pin => {
+    const existing = clusters.find(cluster => {
+      const dx = cluster.x - pin.x
+      const dy = cluster.y - pin.y
+      return Math.hypot(dx, dy) <= threshold
+    })
+
+    if (existing) {
+      const count = existing.pins.length
+      existing.x = (existing.x * count + pin.x) / (count + 1)
+      existing.y = (existing.y * count + pin.y) / (count + 1)
+      existing.pins.push(pin)
+      return
+    }
+
+    clusters.push({ id: `cluster-${clusters.length}-${pin.store.id}`, x: pin.x, y: pin.y, pins: [pin] })
+  })
+
+  return clusters
 }
 
 function StoreMap({ stores }: { stores: StoreRecord[] }) {
   const pins = stores
-    .map((store, index) => ({
+    .map(store => ({
       store,
       location: formatLocation(store),
-      index,
     }))
-    .filter(entry => entry.location)
+    .filter(entry => entry.location && hasCoordinates(entry.store))
+    .map(entry => ({
+      ...entry,
+      projected: projectCoordinates(
+        entry.store.latitude as number,
+        entry.store.longitude as number,
+      ),
+    }))
+
+  const clusters = clusterPins(
+    pins.map(pin => ({
+      store: pin.store,
+      location: pin.location as string,
+      x: pin.projected.x,
+      y: pin.projected.y,
+    })),
+  )
 
   return (
     <section className={styles.mapSection} aria-label="Store locations">
@@ -281,38 +354,58 @@ function StoreMap({ stores }: { stores: StoreRecord[] }) {
           <p className={styles.kicker}>Map</p>
           <h2 className={styles.mapTitle}>Where you’ll find these stores</h2>
           <p className={styles.mapSubtitle}>
-            Pins are placed using the store’s formatted address (street, city,
-            country) so you can quickly scan where each Sedifex partner is
-            located.
+            Pins are now geocoded using the store’s address, projected to
+            latitude/longitude coordinates, and clustered when locations are
+            close together.
           </p>
         </div>
         <span className={styles.resultCount} aria-live="polite">
-          {pins.length} pin{pins.length === 1 ? '' : 's'}
+          {clusters.length} pin{clusters.length === 1 ? '' : 's'}
         </span>
       </div>
 
       <div className={styles.mapCanvas} role="img" aria-label="Store map">
-        {pins.length === 0 && (
+        {clusters.length === 0 && (
           <p className={styles.muted}>Add a location to see pins on the map.</p>
         )}
 
-        {pins.map(({ store, location, index }) => {
-          const coords = computeStablePosition(location as string, index)
+        {clusters.map(cluster => {
+          const count = cluster.pins.length
+          const [{ store, location }] = cluster.pins
           const title = store.displayName || store.name || 'Store'
+          const ariaLabel =
+            count > 1
+              ? `${count} stores near ${location}`
+              : `${title} near ${location}`
 
           return (
-            <div
-              key={store.id}
-              className={styles.mapPin}
-              style={{ left: `${coords.x}%`, top: `${coords.y}%` }}
-              title={location as string}
+            <button
+              key={cluster.id}
+              type="button"
+              className={`${styles.mapPin} ${count > 1 ? styles.clusterPin : ''}`}
+              style={{ left: `${cluster.x}%`, top: `${cluster.y}%` }}
+              title={ariaLabel}
+              aria-label={ariaLabel}
             >
-              <span className={styles.pinDot} aria-hidden />
+              <span
+                className={`${styles.pinDot} ${count > 1 ? styles.clusterDot : ''}`}
+                aria-hidden
+              >
+                {count > 1 ? count : null}
+              </span>
               <div className={styles.pinLabel}>
-                <strong>{title}</strong>
-                <span>{location}</span>
+                <strong>{count > 1 ? `${count} stores` : title}</strong>
+                <span>
+                  {count > 1
+                    ? cluster.pins
+                        .slice(0, 3)
+                        .map(pin => formatLocation(pin.store))
+                        .filter(Boolean)
+                        .join(' · ')
+                    : location}
+                </span>
               </div>
-            </div>
+            </button>
           )
         })}
       </div>
@@ -336,10 +429,24 @@ export default function StoresPage() {
       setError(null)
       setLoading(true)
       try {
-        const storeSnapshot = await getDocs(collection(db, 'stores'))
+        const response = await fetch('/api/stores')
+        if (!response.ok) {
+          throw new Error('Unable to load stores right now. Please retry.')
+        }
+
+        const payload = (await response.json()) as {
+          stores?: Record<string, unknown>[]
+          error?: string
+        }
+
         if (cancelled) return
-        const results = storeSnapshot.docs.map(docSnap =>
-          mapStore(docSnap.data() as Record<string, unknown>, docSnap.id),
+
+        if (!payload.stores) {
+          throw new Error(payload.error || 'Unable to load stores right now. Please retry.')
+        }
+
+        const results = payload.stores.map(item =>
+          mapStore(item, (item as { id?: string }).id || 'unknown'),
         )
         setStores(results)
       } catch (err) {
