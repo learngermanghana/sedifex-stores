@@ -66,6 +66,46 @@ type StorePayload = {
   [key: string]: unknown
   latitude?: number | null
   longitude?: number | null
+  products?: StoreProductPayload[]
+}
+
+type StoreProductPayload = {
+  id: string
+  title: string | null
+  category: string | null
+  description: string | null
+  price: number | null
+  currency: string | null
+}
+
+function toStoreProduct(
+  data: Record<string, unknown>,
+  id: string,
+): StoreProductPayload | null {
+  const title =
+    toNullableString(data.title) ||
+    toNullableString(data.name) ||
+    toNullableString(data.label)
+
+  const category =
+    toNullableString(data.category) ||
+    toNullableString(data.type) ||
+    toNullableString(data.kind)
+
+  const description = toNullableString(data.description)
+  const price = toNumber(data.price)
+  const currency = toNullableString(data.currency) || toNullableString(data.unit)
+
+  if (!title && !description && !category) return null
+
+  return {
+    id,
+    title,
+    category,
+    description,
+    price,
+    currency,
+  }
 }
 
 export async function GET() {
@@ -106,11 +146,20 @@ export async function GET() {
         }
       }
 
+      const productSnapshot = await getDocs(collection(doc(db, 'stores', id), 'products'))
+      const products: StoreProductPayload[] = productSnapshot.docs
+        .map(productDoc => {
+          const data = productDoc.data() as Record<string, unknown>
+          return toStoreProduct(data, productDoc.id)
+        })
+        .filter(Boolean) as StoreProductPayload[]
+
       stores.push({
         id,
         ...rawData,
         latitude: latitude ?? null,
         longitude: longitude ?? null,
+        products,
       })
     }
 
