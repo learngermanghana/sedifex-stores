@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 
 const PAGE_SIZE = 24
+const SKELETON_CARD_COUNT = 6
 
 import styles from './page.module.css'
 import { db } from '@/lib/firebaseClient'
@@ -145,6 +146,45 @@ function StoreCard({
         </button>
       </div>
     </article>
+  )
+}
+
+function SkeletonCard() {
+  return (
+    <div className={styles.cardSkeleton} aria-hidden="true">
+      <div className={styles.skeletonEyebrow} />
+      <div className={styles.skeletonTitle} />
+      <div className={styles.skeletonSubtitle} />
+      <div className={styles.skeletonMeta}>
+        <div />
+        <div />
+        <div />
+      </div>
+      <div className={styles.skeletonFooter} />
+    </div>
+  )
+}
+
+function SkeletonMap() {
+  return (
+    <div className={styles.mapSection} aria-hidden="true">
+      <div className={styles.mapHeader}>
+        <div>
+          <p className={styles.kicker}>Live coverage</p>
+          <h2 className={styles.mapTitle}>Global Store Footprint</h2>
+          <p className={styles.mapSubtitle}>
+            Visualizing your public Sedifex workspaces on a globe.
+          </p>
+        </div>
+        <span className={styles.skeletonPill} />
+      </div>
+
+      <div className={`${styles.mapCanvas} ${styles.mapSkeleton}`}>
+        <div className={styles.mapSkeletonDot} />
+        <div className={styles.mapSkeletonDot} />
+        <div className={styles.mapSkeletonDot} />
+      </div>
+    </div>
   )
 }
 
@@ -538,58 +578,71 @@ export default function HomePage() {
           </div>
         </section>
 
-        {loading && (
-          <p className={styles.muted} aria-live="polite">
-            Loading stores…
-          </p>
-        )}
-
         {error && (
           <p className={styles.error} role="alert">
             {error}
           </p>
         )}
 
-        {!loading && !error && filteredStores.length === 0 && (
-          <p className={styles.muted} aria-live="polite">
-            No stores found yet. Once you activate more Sedifex workspaces and
-            mark them as public, they’ll appear here automatically.
-          </p>
-        )}
+        {loading ? (
+          <div className={styles.layout} aria-live="polite">
+            <SkeletonMap />
 
-        <div className={styles.layout}>
-          <StoreMap stores={filteredStores} />
+            <section className={`${styles.grid} ${styles.gridSkeleton}`} aria-busy="true">
+              {Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
+                <SkeletonCard key={index} />
+              ))}
+            </section>
+          </div>
+        ) : (
+          <div className={styles.layout}>
+            <StoreMap stores={filteredStores} />
 
-          <section className={styles.grid} aria-live="polite">
-            {visibleStores.map(store => (
-              <StoreCard
-                store={store}
-                key={store.id}
-                onSelect={setSelectedStore}
-              />
-            ))}
-          </section>
-
-          {filteredStores.length > PAGE_SIZE && (
-            <div className={styles.listFooter}>
-              <p className={styles.resultCount}>
-                Showing {visibleStores.length} of {filteredStores.length} store
-                {filteredStores.length === 1 ? '' : 's'}
-              </p>
-
-              {visibleCount < filteredStores.length && (
-                <button
-                  type="button"
-                  className={styles.secondaryButton}
-                  onClick={showMoreStores}
-                  aria-label="Load more stores"
-                >
-                  Load more
-                </button>
+            <section className={styles.grid} aria-live="polite">
+              {filteredStores.length === 0 ? (
+                <article className={styles.emptyCard} role="status">
+                  <div className={styles.emptyIcon} aria-hidden />
+                  <div>
+                    <p className={styles.kicker}>Nothing to show (yet)</p>
+                    <h3 className={styles.emptyTitle}>No stores match your filters</h3>
+                    <p className={styles.emptyCopy}>
+                      Adjust your filters or invite stores to opt into the public
+                      directory. New workspaces will appear here automatically.
+                    </p>
+                  </div>
+                </article>
+              ) : (
+                visibleStores.map(store => (
+                  <StoreCard
+                    store={store}
+                    key={store.id}
+                    onSelect={setSelectedStore}
+                  />
+                ))
               )}
-            </div>
-          )}
-        </div>
+            </section>
+
+            {filteredStores.length > PAGE_SIZE && (
+              <div className={styles.listFooter}>
+                <p className={styles.resultCount}>
+                  Showing {visibleStores.length} of {filteredStores.length} store
+                  {filteredStores.length === 1 ? '' : 's'}
+                </p>
+
+                {visibleCount < filteredStores.length && (
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={showMoreStores}
+                    aria-label="Load more stores"
+                  >
+                    Load more
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {selectedStore && (
