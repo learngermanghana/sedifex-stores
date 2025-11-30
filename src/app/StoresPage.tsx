@@ -26,6 +26,16 @@ type StoreRecord = {
   updatedAt: Date | null
   latitude: number | null
   longitude: number | null
+  products: StoreProduct[]
+}
+
+type StoreProduct = {
+  id: string
+  title: string | null
+  category: string | null
+  description: string | null
+  price: number | null
+  currency: string | null
 }
 
 function toNullableString(value: unknown): string | null {
@@ -75,6 +85,22 @@ function mapStore(data: Record<string, unknown>, id: string): StoreRecord {
     updatedAt: toDate(data.updatedAt),
     latitude: toNumber(data.latitude),
     longitude: toNumber(data.longitude),
+    products: Array.isArray(data.products)
+      ? (data.products as Record<string, unknown>[]).map((product, index) =>
+          mapProduct(product, (product as { id?: string }).id || `${id}-item-${index}`),
+        )
+      : [],
+  }
+}
+
+function mapProduct(data: Record<string, unknown>, id: string): StoreProduct {
+  return {
+    id,
+    title: toNullableString(data.title) || toNullableString(data.name),
+    category: toNullableString(data.category) || toNullableString(data.type),
+    description: toNullableString(data.description),
+    price: toNumber(data.price),
+    currency: toNullableString(data.currency),
   }
 }
 
@@ -86,6 +112,25 @@ function formatLocation(store: StoreRecord): string {
     store.country,
   ].filter(Boolean)
   return locationParts.join(', ')
+}
+
+function formatPrice(product: StoreProduct): string | null {
+  if (product.price === null && !product.currency) return null
+
+  const currency = (product.currency || 'USD').toUpperCase()
+  const normalisedCurrency = currency.length === 3 ? currency : 'USD'
+
+  if (product.price === null) return normalisedCurrency
+
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: normalisedCurrency,
+      maximumFractionDigits: 2,
+    }).format(product.price)
+  } catch {
+    return `${normalisedCurrency} ${product.price}`
+  }
 }
 
 function buildOptions(values: (string | null)[]) {
@@ -110,6 +155,7 @@ function StoreCard({ store }: { store: StoreRecord }) {
   const location = formatLocation(store)
   const [copied, setCopied] = useState(false)
   const storeUrl = `https://stores.sedifex.com/store/${store.id}`
+  const featuredProducts = store.products.slice(0, 3)
 
   const handleCall = () => {
     if (!store.phone) return
@@ -145,6 +191,46 @@ function StoreCard({ store }: { store: StoreRecord }) {
 
       {store.publicDescription && (
         <p className={styles.cardDescription}>{store.publicDescription}</p>
+      )}
+
+      {featuredProducts.length > 0 && (
+        <div className={styles.productPanel}>
+          <div className={styles.productHeader}>
+            <p className={styles.cardEyebrow}>Featured offerings</p>
+            <span className={styles.productCount}>
+              {featuredProducts.length} item{featuredProducts.length === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          <ul className={styles.productList}>
+            {featuredProducts.map(product => {
+              const priceLabel = formatPrice(product)
+              return (
+                <li key={product.id} className={styles.productItem}>
+                  <div className={styles.productTitleRow}>
+                    <p className={styles.productTitle}>
+                      {product.title || 'Listing'}
+                    </p>
+                    {product.category && (
+                      <span className={styles.productBadge}>{product.category}</span>
+                    )}
+                  </div>
+                  {product.description && (
+                    <p className={styles.productDescription}>{product.description}</p>
+                  )}
+                  {priceLabel && (
+                    <p className={styles.productPrice}>{priceLabel}</p>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+
+          <p className={styles.productHint}>
+            Chat, call, or email the store directly to learn more—online checkout is
+            disabled.
+          </p>
+        </div>
       )}
 
       <dl className={styles.meta}>
