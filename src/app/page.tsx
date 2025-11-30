@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebaseClient'
 
 type StoreRecord = {
@@ -14,25 +14,44 @@ type StoreRecord = {
   contractStatus: string | null
   addressLine1: string | null
   city: string | null
+  region: string | null
   country: string | null
+  createdAt: Date | null
+  updatedAt: Date | null
 }
 
 function toNullableString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value : null
 }
 
-function mapStore(raw: any, id: string): StoreRecord {
+function toDate(value: any): Date | null {
+  if (!value) return null
+  if (value.toDate && typeof value.toDate === 'function') {
+    try {
+      return value.toDate()
+    } catch {
+      return null
+    }
+  }
+  if (value instanceof Date) return value
+  return null
+}
+
+function mapStore(data: any, id: string): StoreRecord {
   return {
     id,
-    name: toNullableString(raw.name),
-    displayName: toNullableString(raw.displayName),
-    email: toNullableString(raw.email),
-    phone: toNullableString(raw.phone),
-    status: toNullableString(raw.status),
-    contractStatus: toNullableString(raw.contractStatus),
-    addressLine1: toNullableString(raw.addressLine1),
-    city: toNullableString(raw.city),
-    country: toNullableString(raw.country),
+    name: toNullableString(data.name),
+    displayName: toNullableString(data.displayName),
+    email: toNullableString(data.email),
+    phone: toNullableString(data.phone),
+    status: toNullableString(data.status),
+    contractStatus: toNullableString(data.contractStatus),
+    addressLine1: toNullableString(data.addressLine1),
+    city: toNullableString(data.city),
+    region: toNullableString(data.region),
+    country: toNullableString(data.country),
+    createdAt: toDate(data.createdAt),
+    updatedAt: toDate(data.updatedAt),
   }
 }
 
@@ -52,30 +71,29 @@ export default function HomePage() {
       try {
         const storesRef = collection(db, 'stores')
 
-        // TEMP: no filters – just load everything first
-        const snapshot = await getDocs(storesRef)
+        // ✅ Only show stores that opted into the public directory
+        const q = query(storesRef, where('isPublicDirectory', '==', true))
 
-        console.log('[directory] got docs =', snapshot.size)
-        if (snapshot.size) {
-          console.log(
-            '[directory] first doc:',
-            snapshot.docs[0].id,
-            snapshot.docs[0].data(),
-          )
-        }
-
+        const snapshot = await getDocs(q)
         if (cancelled) return
 
         const rows: StoreRecord[] = snapshot.docs.map(docSnap =>
           mapStore(docSnap.data(), docSnap.id),
         )
 
-        // Filter out ones with zero public info
+        // Optional: only show stores that have some contact/location info
         const visible = rows.filter(
           s =>
             (s.displayName || s.name) &&
             (s.city || s.country || s.phone || s.email || s.addressLine1),
         )
+
+        // ✅ Sort alphabetically by name on the client
+        visible.sort((a, b) => {
+          const nameA = (a.displayName || a.name || '').toLowerCase()
+          const nameB = (b.displayName || b.name || '').toLowerCase()
+          return nameA.localeCompare(nameB)
+        })
 
         setStores(visible)
       } catch (err) {
@@ -179,7 +197,13 @@ export default function HomePage() {
             }}
           />
         </div>
-        <span style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>
+        <span
+          style={{
+            fontSize: 12,
+            color: '#6b7280',
+            whiteSpace: 'nowrap',
+          }}
+        >
           Showing {filteredStores.length} store
           {filteredStores.length === 1 ? '' : 's'}
         </span>
@@ -200,8 +224,8 @@ export default function HomePage() {
 
       {!loading && !error && filteredStores.length === 0 && (
         <p style={{ fontSize: 14, color: '#4b5563', marginTop: 8 }}>
-          No stores found yet. Once you activate more Sedifex workspaces, they’ll
-          appear here automatically.
+          No stores found yet. Once you activate more Sedifex workspaces and
+          mark them as public, they’ll appear here automatically.
         </p>
       )}
 
@@ -248,11 +272,20 @@ export default function HomePage() {
                 {location || 'Location coming soon'}
               </p>
 
-              <div style={{ marginTop: 6, fontSize: 13, color: '#4b5563' }}>
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 13,
+                  color: '#4b5563',
+                }}
+              >
                 {store.phone && (
                   <div>
                     Phone:{' '}
-                    <a href={`tel:${store.phone}`} style={{ color: '#4338CA' }}>
+                    <a
+                      href={`tel:${store.phone}`}
+                      style={{ color: '#4338CA' }}
+                    >
                       {store.phone}
                     </a>
                   </div>
