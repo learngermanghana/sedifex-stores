@@ -110,6 +110,29 @@ function StoreCard({
 }) {
   const title = store.displayName || store.name || 'Store'
   const location = formatLocation(store)
+  const [copied, setCopied] = useState(false)
+
+  const handleCall = () => {
+    if (!store.phone) return
+    window.location.href = `tel:${store.phone}`
+  }
+
+  const handleEmail = () => {
+    if (!store.email) return
+    window.location.href = `mailto:${store.email}`
+  }
+
+  const handleCopyAddress = async () => {
+    if (!location) return
+
+    try {
+      await navigator.clipboard.writeText(location)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      setCopied(false)
+    }
+  }
 
   return (
     <article className={styles.card}>
@@ -144,10 +167,41 @@ function StoreCard({
         )}
       </dl>
 
-      <p className={styles.cardFooter}>
-        Powered by Sedifex · Status:{' '}
-        <strong>{store.contractStatus ?? store.status ?? '—'}</strong>
-      </p>
+      <div className={styles.cardFooter}>
+        <p className={styles.cardFooterText}>
+          Powered by Sedifex · Status:{' '}
+          <strong>{store.contractStatus ?? store.status ?? '—'}</strong>
+        </p>
+        <div className={styles.quickActions}>
+          <button
+            className={styles.actionButton}
+            type="button"
+            onClick={handleCall}
+            disabled={!store.phone}
+            aria-label={store.phone ? `Call ${store.phone}` : 'Phone unavailable'}
+          >
+            Call
+          </button>
+          <button
+            className={styles.actionButton}
+            type="button"
+            onClick={handleEmail}
+            disabled={!store.email}
+            aria-label={store.email ? `Email ${store.email}` : 'Email unavailable'}
+          >
+            Email
+          </button>
+          <button
+            className={styles.actionButton}
+            type="button"
+            onClick={handleCopyAddress}
+            disabled={!location}
+            aria-label={location ? `Copy ${location}` : 'Address unavailable'}
+          >
+            {copied ? 'Copied' : 'Copy address'}
+          </button>
+        </div>
+      </div>
 
       <div className={styles.cardActions}>
         <button
