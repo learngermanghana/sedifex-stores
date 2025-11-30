@@ -1,23 +1,20 @@
-// src/lib/firebaseClient.ts
-import { initializeApp, getApps, type FirebaseApp } from 'firebase/app'
+// lib/firebaseClient.ts
+import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
 
-// ⚠️ Copy these values from your existing Sedifex web app
-// (your current firebase.ts in sedifexbiz-main/web/src/firebase.ts)
 const firebaseConfig = {
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_AUTH_DOMAIN',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_STORAGE_BUCKET',
-  messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  // optional but nice to include:
+  storageBucket: 'sedifex-web.appspot.com',
+  messagingSenderId: '866480271132',
+  appId: '1:866480271132:web:5c0d85556cf16d37a614d9',
 }
 
-let app: FirebaseApp
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig)
-} else {
-  app = getApps()[0]!
-}
-
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
 export const db = getFirestore(app)
+
+// 🔍 debug once:
+console.log('[firebase] config projectId =', firebaseConfig.projectId)
+console.log('[firebase] db projectId =', (db as any)._databaseId?.projectId)
