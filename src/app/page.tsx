@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 
+const PAGE_SIZE = 24
+
 import styles from './page.module.css'
 import { db } from '@/lib/firebaseClient'
 
@@ -294,6 +296,7 @@ export default function HomePage() {
   const [contractStatusFilter, setContractStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState<'name' | 'newest'>('name')
   const [selectedStore, setSelectedStore] = useState<StoreRecord | null>(null)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   useEffect(() => {
     let cancelled = false
@@ -421,6 +424,22 @@ export default function HomePage() {
     return sorted
   }, [stores, searchTerm, countryFilter, regionFilter, contractStatusFilter, sortBy])
 
+  useEffect(() => {
+    setVisibleCount(prev => {
+      if (filteredStores.length <= PAGE_SIZE) return filteredStores.length
+      return Math.min(Math.max(PAGE_SIZE, prev), filteredStores.length)
+    })
+  }, [filteredStores])
+
+  const visibleStores = useMemo(
+    () => filteredStores.slice(0, visibleCount),
+    [filteredStores, visibleCount],
+  )
+
+  const showMoreStores = () => {
+    setVisibleCount(prev => Math.min(prev + PAGE_SIZE, filteredStores.length))
+  }
+
   return (
     <main className={styles.page}>
       <div className={styles.container}>
@@ -542,7 +561,7 @@ export default function HomePage() {
           <StoreMap stores={filteredStores} />
 
           <section className={styles.grid} aria-live="polite">
-            {filteredStores.map(store => (
+            {visibleStores.map(store => (
               <StoreCard
                 store={store}
                 key={store.id}
@@ -550,6 +569,26 @@ export default function HomePage() {
               />
             ))}
           </section>
+
+          {filteredStores.length > PAGE_SIZE && (
+            <div className={styles.listFooter}>
+              <p className={styles.resultCount}>
+                Showing {visibleStores.length} of {filteredStores.length} store
+                {filteredStores.length === 1 ? '' : 's'}
+              </p>
+
+              {visibleCount < filteredStores.length && (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={showMoreStores}
+                  aria-label="Load more stores"
+                >
+                  Load more
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
