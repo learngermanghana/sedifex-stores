@@ -1,13 +1,22 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  getDoc,
+} from 'firebase/firestore'
+
+import styles from './page.module.css'
+import { db } from '@/lib/firebaseClient'
 
 const PAGE_SIZE = 24
 const SKELETON_CARD_COUNT = 6
 
-import styles from './page.module.css'
-import { db } from '@/lib/firebaseClient'
+// ---------- Types / helpers ----------
 
 type StoreRecord = {
   id: string
@@ -86,6 +95,8 @@ function buildOptions(values: (string | null)[]) {
     .sort(([, labelA], [, labelB]) => labelA.localeCompare(labelB))
     .map(([value, label]) => ({ value, label }))
 }
+
+// ---------- UI components ----------
 
 function StoreCard({
   store,
@@ -216,8 +227,9 @@ function StoreMap({ stores }: { stores: StoreRecord[] }) {
           <p className={styles.kicker}>Map</p>
           <h2 className={styles.mapTitle}>Where you’ll find these stores</h2>
           <p className={styles.mapSubtitle}>
-            Pins are placed using the store’s formatted address (street, city, country)
-            so you can quickly scan where each Sedifex partner is located.
+            Pins are placed using the store’s formatted address (street, city,
+            country) so you can quickly scan where each Sedifex partner is
+            located.
           </p>
         </div>
         <span className={styles.resultCount} aria-live="polite">
@@ -265,389 +277,4 @@ function StoreDetails({
   const location = formatLocation(store)
 
   return (
-    <div className={styles.dialogOverlay} role="presentation" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Details for ${title}`}
-        className={styles.dialog}
-        onClick={event => event.stopPropagation()}
-      >
-        <header className={styles.dialogHeader}>
-          <div>
-            <p className={styles.cardEyebrow}>Store</p>
-            <h2 className={styles.cardTitle}>{title}</h2>
-            <p className={styles.cardSubtitle}>
-              {location || 'Location coming soon'}
-            </p>
-          </div>
-          <button className={styles.secondaryButton} type="button" onClick={onClose}>
-            Close
-          </button>
-        </header>
-
-        {store.publicDescription && (
-          <p className={styles.dialogDescription}>{store.publicDescription}</p>
-        )}
-
-        <dl className={styles.dialogMeta}>
-          {store.phone && (
-            <div>
-              <dt>Phone</dt>
-              <dd>
-                <a href={`tel:${store.phone}`}>{store.phone}</a>
-              </dd>
-            </div>
-          )}
-
-          {store.email && (
-            <div>
-              <dt>Email</dt>
-              <dd>
-                <a href={`mailto:${store.email}`}>{store.email}</a>
-              </dd>
-            </div>
-          )}
-
-          {location && (
-            <div>
-              <dt>Address</dt>
-              <dd>{location}</dd>
-            </div>
-          )}
-        </dl>
-
-        <p className={styles.cardFooter}>
-          Powered by Sedifex · Status:{' '}
-          <strong>{store.contractStatus ?? store.status ?? '—'}</strong>
-        </p>
-      </div>
-    </div>
-  )
-}
-
-export default function HomePage() {
-  const [stores, setStores] = useState<StoreRecord[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [countryFilter, setCountryFilter] = useState('all')
-  const [regionFilter, setRegionFilter] = useState('all')
-  const [contractStatusFilter, setContractStatusFilter] = useState('all')
-  const [sortBy, setSortBy] = useState<'name' | 'newest'>('name')
-  const [selectedStore, setSelectedStore] = useState<StoreRecord | null>(null)
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadStores() {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const storesRef = collection(db, 'stores')
-
-        // ✅ Only show stores that opted into the public directory
-        const q = query(storesRef, where('isPublicDirectory', '==', true))
-
-        const snapshot = await getDocs(q)
-        if (cancelled) return
-
-        const rows: StoreRecord[] = snapshot.docs.map(docSnap =>
-          mapStore(docSnap.data(), docSnap.id),
-        )
-
-        // Filter out stores with *zero* public info (extra safety)
-        const visible = rows.filter(
-          s =>
-            (s.displayName || s.name) &&
-            (s.city ||
-              s.country ||
-              s.phone ||
-              s.email ||
-              s.addressLine1 ||
-              s.publicDescription),
-        )
-
-        // Sort alphabetically by name
-        visible.sort((a, b) => {
-          const nameA = (a.displayName || a.name || '').toLowerCase()
-          const nameB = (b.displayName || b.name || '').toLowerCase()
-          return nameA.localeCompare(nameB)
-        })
-
-        setStores(visible)
-      } catch (err) {
-        console.error('[directory] Failed to load stores', err)
-        if (!cancelled) {
-          setError(
-            'We could not load the store directory. Please check your Firestore config or rules.',
-          )
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    void loadStores()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const normalize = (value: string | null) => (value || '').toLowerCase()
-
-  const countryOptions = useMemo(
-    () => buildOptions(stores.map(store => store.country)),
-    [stores],
-  )
-
-  const regionOptions = useMemo(
-    () => buildOptions(stores.map(store => store.region)),
-    [stores],
-  )
-
-  const contractStatusOptions = useMemo(
-    () => buildOptions(stores.map(store => store.contractStatus)),
-    [stores],
-  )
-
-  const filteredStores = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase()
-
-    const matchesSearch = (store: StoreRecord) => {
-      if (!term) return true
-      const name = (store.displayName || store.name || '').toLowerCase()
-      const city = (store.city || '').toLowerCase()
-      const country = (store.country || '').toLowerCase()
-      const address = (store.addressLine1 || '').toLowerCase()
-      const desc = (store.publicDescription || '').toLowerCase()
-      return (
-        name.includes(term) ||
-        city.includes(term) ||
-        country.includes(term) ||
-        address.includes(term) ||
-        desc.includes(term)
-      )
-    }
-
-    const matchesFilters = (store: StoreRecord) => {
-      const matchesCountry =
-        countryFilter === 'all' || normalize(store.country) === countryFilter
-      const matchesRegion =
-        regionFilter === 'all' || normalize(store.region) === regionFilter
-      const matchesContractStatus =
-        contractStatusFilter === 'all' ||
-        normalize(store.contractStatus) === contractStatusFilter
-
-      return matchesCountry && matchesRegion && matchesContractStatus
-    }
-
-    const sorted = stores
-      .filter(store => matchesSearch(store) && matchesFilters(store))
-      .slice()
-
-    sorted.sort((a, b) => {
-      if (sortBy === 'newest') {
-        const dateA = a.createdAt ? a.createdAt.getTime() : 0
-        const dateB = b.createdAt ? b.createdAt.getTime() : 0
-        if (dateA !== dateB) return dateB - dateA
-      }
-
-      const nameA = (a.displayName || a.name || '').toLowerCase()
-      const nameB = (b.displayName || b.name || '').toLowerCase()
-      return nameA.localeCompare(nameB)
-    })
-
-    return sorted
-  }, [stores, searchTerm, countryFilter, regionFilter, contractStatusFilter, sortBy])
-
-  useEffect(() => {
-    setVisibleCount(prev => {
-      if (filteredStores.length <= PAGE_SIZE) return filteredStores.length
-      return Math.min(Math.max(PAGE_SIZE, prev), filteredStores.length)
-    })
-  }, [filteredStores])
-
-  const visibleStores = useMemo(
-    () => filteredStores.slice(0, visibleCount),
-    [filteredStores, visibleCount],
-  )
-
-  const showMoreStores = () => {
-    setVisibleCount(prev => Math.min(prev + PAGE_SIZE, filteredStores.length))
-  }
-
-  return (
-    <main className={styles.page}>
-      <div className={styles.container}>
-        <header className={styles.header}>
-          <div>
-            <p className={styles.kicker}>Directory</p>
-            <h1 className={styles.title}>Sedifex store directory</h1>
-          </div>
-          <p className={styles.lead}>
-            Browse businesses powered by Sedifex. View their location and
-            contact details, then reach out to them directly to order or visit
-            in person.
-          </p>
-        </header>
-
-        <section className={styles.toolbar} aria-label="Search stores">
-          <div className={styles.toolbarRow}>
-            <div className={styles.searchField}>
-              <label htmlFor="search">Search by name, city, or description</label>
-              <input
-                id="search"
-                type="text"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                placeholder="e.g. Xenom, Accra, Ghana"
-              />
-            </div>
-            <span className={styles.resultCount} aria-live="polite">
-              Showing {filteredStores.length} store
-              {filteredStores.length === 1 ? '' : 's'}
-            </span>
-          </div>
-
-          <div className={styles.toolbarRow}>
-            <div className={styles.filters}>
-              <div className={styles.selectField}>
-                <label htmlFor="country">Country/region</label>
-                <select
-                  id="country"
-                  value={countryFilter}
-                  onChange={e => setCountryFilter(e.target.value)}
-                >
-                  <option value="all">All locations</option>
-                  {countryOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={styles.selectField}>
-                <label htmlFor="region">Region</label>
-                <select
-                  id="region"
-                  value={regionFilter}
-                  onChange={e => setRegionFilter(e.target.value)}
-                >
-                  <option value="all">All regions</option>
-                  {regionOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={styles.selectField}>
-                <label htmlFor="contractStatus">Contract status</label>
-                <select
-                  id="contractStatus"
-                  value={contractStatusFilter}
-                  onChange={e => setContractStatusFilter(e.target.value)}
-                >
-                  <option value="all">All contract statuses</option>
-                  {contractStatusOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className={styles.selectField}>
-              <label htmlFor="sort">Sort by</label>
-              <select
-                id="sort"
-                value={sortBy}
-                onChange={e => setSortBy(e.target.value as 'name' | 'newest')}
-              >
-                <option value="name">Name (A–Z)</option>
-                <option value="newest">Newest onboarding</option>
-              </select>
-            </div>
-          </div>
-        </section>
-
-        {error && (
-          <p className={styles.error} role="alert">
-            {error}
-          </p>
-        )}
-
-        {loading ? (
-          <div className={styles.layout} aria-live="polite">
-            <SkeletonMap />
-
-            <section className={`${styles.grid} ${styles.gridSkeleton}`} aria-busy="true">
-              {Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
-                <SkeletonCard key={index} />
-              ))}
-            </section>
-          </div>
-        ) : (
-          <div className={styles.layout}>
-            <StoreMap stores={filteredStores} />
-
-            <section className={styles.grid} aria-live="polite">
-              {filteredStores.length === 0 ? (
-                <article className={styles.emptyCard} role="status">
-                  <div className={styles.emptyIcon} aria-hidden />
-                  <div>
-                    <p className={styles.kicker}>Nothing to show (yet)</p>
-                    <h3 className={styles.emptyTitle}>No stores match your filters</h3>
-                    <p className={styles.emptyCopy}>
-                      Adjust your filters or invite stores to opt into the public
-                      directory. New workspaces will appear here automatically.
-                    </p>
-                  </div>
-                </article>
-              ) : (
-                visibleStores.map(store => (
-                  <StoreCard
-                    store={store}
-                    key={store.id}
-                    onSelect={setSelectedStore}
-                  />
-                ))
-              )}
-            </section>
-
-            {filteredStores.length > PAGE_SIZE && (
-              <div className={styles.listFooter}>
-                <p className={styles.resultCount}>
-                  Showing {visibleStores.length} of {filteredStores.length} store
-                  {filteredStores.length === 1 ? '' : 's'}
-                </p>
-
-                {visibleCount < filteredStores.length && (
-                  <button
-                    type="button"
-                    className={styles.secondaryButton}
-                    onClick={showMoreStores}
-                    aria-label="Load more stores"
-                  >
-                    Load more
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {selectedStore && (
-        <StoreDetails store={selectedStore} onClose={() => setSelectedStore(null)} />
-      )}
-    </main>
-  )
-}
+    <div className={styles.dialogOverlay}
