@@ -84,7 +84,13 @@ function buildOptions(values: (string | null)[]) {
     .map(([value, label]) => ({ value, label }))
 }
 
-function StoreCard({ store }: { store: StoreRecord }) {
+function StoreCard({
+  store,
+  onSelect,
+}: {
+  store: StoreRecord
+  onSelect: (store: StoreRecord) => void
+}) {
   const title = store.displayName || store.name
   const location = formatLocation(store)
 
@@ -102,7 +108,7 @@ function StoreCard({ store }: { store: StoreRecord }) {
         <p className={styles.cardDescription}>{store.publicDescription}</p>
       )}
 
-      <dl className={styles.meta}> 
+      <dl className={styles.meta}>
         {store.phone && (
           <div>
             <dt>Phone</dt>
@@ -125,7 +131,156 @@ function StoreCard({ store }: { store: StoreRecord }) {
         Powered by Sedifex · Status:{' '}
         <strong>{store.contractStatus ?? store.status ?? '—'}</strong>
       </p>
+
+      <div className={styles.cardActions}>
+        <button
+          className={styles.secondaryButton}
+          type="button"
+          onClick={() => onSelect(store)}
+          aria-label={`View details for ${title}`}
+        >
+          View details
+        </button>
+      </div>
     </article>
+  )
+}
+
+function computeStablePosition(text: string, salt: number) {
+  let hash = 0
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash * 31 + text.charCodeAt(i) + salt * 17) % 100000
+  }
+
+  const x = 12 + (hash % 76)
+  const y = 12 + ((hash / 100) % 76)
+
+  return { x, y }
+}
+
+function StoreMap({ stores }: { stores: StoreRecord[] }) {
+  const pins = stores
+    .map((store, index) => ({
+      store,
+      location: formatLocation(store),
+      index,
+    }))
+    .filter(entry => entry.location)
+
+  return (
+    <section className={styles.mapSection} aria-label="Store locations">
+      <div className={styles.mapHeader}>
+        <div>
+          <p className={styles.kicker}>Map</p>
+          <h2 className={styles.mapTitle}>Where you’ll find these stores</h2>
+          <p className={styles.mapSubtitle}>
+            Pins are placed using the store’s formatted address (street, city, country)
+            so you can quickly scan where each Sedifex partner is located.
+          </p>
+        </div>
+        <span className={styles.resultCount} aria-live="polite">
+          {pins.length} pin{pins.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      <div className={styles.mapCanvas} role="img" aria-label="Store map">
+        {pins.length === 0 && (
+          <p className={styles.muted}>Add a location to see pins on the map.</p>
+        )}
+
+        {pins.map(({ store, location, index }) => {
+          const coords = computeStablePosition(location as string, index)
+          const title = store.displayName || store.name || 'Store'
+
+          return (
+            <div
+              key={store.id}
+              className={styles.mapPin}
+              style={{ left: `${coords.x}%`, top: `${coords.y}%` }}
+              title={location as string}
+            >
+              <span className={styles.pinDot} aria-hidden />
+              <div className={styles.pinLabel}>
+                <strong>{title}</strong>
+                <span>{location}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function StoreDetails({
+  store,
+  onClose,
+}: {
+  store: StoreRecord
+  onClose: () => void
+}) {
+  const title = store.displayName || store.name
+  const location = formatLocation(store)
+
+  return (
+    <div className={styles.dialogOverlay} role="presentation" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Details for ${title}`}
+        className={styles.dialog}
+        onClick={event => event.stopPropagation()}
+      >
+        <header className={styles.dialogHeader}>
+          <div>
+            <p className={styles.cardEyebrow}>Store</p>
+            <h2 className={styles.cardTitle}>{title}</h2>
+            <p className={styles.cardSubtitle}>
+              {location || 'Location coming soon'}
+            </p>
+          </div>
+          <button className={styles.secondaryButton} type="button" onClick={onClose}>
+            Close
+          </button>
+        </header>
+
+        {store.publicDescription && (
+          <p className={styles.dialogDescription}>{store.publicDescription}</p>
+        )}
+
+        <dl className={styles.dialogMeta}>
+          {store.phone && (
+            <div>
+              <dt>Phone</dt>
+              <dd>
+                <a href={`tel:${store.phone}`}>{store.phone}</a>
+              </dd>
+            </div>
+          )}
+
+          {store.email && (
+            <div>
+              <dt>Email</dt>
+              <dd>
+                <a href={`mailto:${store.email}`}>{store.email}</a>
+              </dd>
+            </div>
+          )}
+
+          {location && (
+            <div>
+              <dt>Address</dt>
+              <dd>{location}</dd>
+            </div>
+          )}
+        </dl>
+
+        <p className={styles.cardFooter}>
+          Powered by Sedifex · Status:{' '}
+          <strong>{store.contractStatus ?? store.status ?? '—'}</strong>
+        </p>
+      </div>
+    </div>
   )
 }
 
@@ -138,6 +293,7 @@ export default function HomePage() {
   const [regionFilter, setRegionFilter] = useState('all')
   const [contractStatusFilter, setContractStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState<'name' | 'newest'>('name')
+  const [selectedStore, setSelectedStore] = useState<StoreRecord | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -382,12 +538,24 @@ export default function HomePage() {
           </p>
         )}
 
-        <section className={styles.grid} aria-live="polite">
-          {filteredStores.map(store => (
-            <StoreCard store={store} key={store.id} />
-          ))}
-        </section>
+        <div className={styles.layout}>
+          <StoreMap stores={filteredStores} />
+
+          <section className={styles.grid} aria-live="polite">
+            {filteredStores.map(store => (
+              <StoreCard
+                store={store}
+                key={store.id}
+                onSelect={setSelectedStore}
+              />
+            ))}
+          </section>
+        </div>
       </div>
+
+      {selectedStore && (
+        <StoreDetails store={selectedStore} onClose={() => setSelectedStore(null)} />
+      )}
     </main>
   )
 }
