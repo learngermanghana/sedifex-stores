@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
+
+import styles from './page.module.css'
 import { db } from '@/lib/firebaseClient'
 
 type StoreRecord = {
@@ -25,20 +27,23 @@ function toNullableString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value : null
 }
 
-function toDate(value: any): Date | null {
+function toDate(value: unknown): Date | null {
   if (!value) return null
-  if (value?.toDate && typeof value.toDate === 'function') {
-    try {
-      return value.toDate()
-    } catch {
-      return null
+  if (typeof value === 'object' && value !== null) {
+    const withToDate = value as { toDate?: () => Date }
+    if (typeof withToDate.toDate === 'function') {
+      try {
+        return withToDate.toDate()
+      } catch {
+        return null
+      }
     }
   }
   if (value instanceof Date) return value
   return null
 }
 
-function mapStore(data: any, id: string): StoreRecord {
+function mapStore(data: Record<string, unknown>, id: string): StoreRecord {
   return {
     id,
     name: toNullableString(data.name),
@@ -55,6 +60,58 @@ function mapStore(data: any, id: string): StoreRecord {
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   }
+}
+
+function formatLocation(store: StoreRecord): string {
+  const locationParts = [store.addressLine1, store.city, store.country].filter(
+    Boolean,
+  )
+  return locationParts.join(', ')
+}
+
+function StoreCard({ store }: { store: StoreRecord }) {
+  const title = store.displayName || store.name
+  const location = formatLocation(store)
+
+  return (
+    <article className={styles.card}>
+      <header>
+        <p className={styles.cardEyebrow}>Store</p>
+        <h2 className={styles.cardTitle}>{title}</h2>
+        <p className={styles.cardSubtitle}>
+          {location || 'Location coming soon'}
+        </p>
+      </header>
+
+      {store.publicDescription && (
+        <p className={styles.cardDescription}>{store.publicDescription}</p>
+      )}
+
+      <dl className={styles.meta}> 
+        {store.phone && (
+          <div>
+            <dt>Phone</dt>
+            <dd>
+              <a href={`tel:${store.phone}`}>{store.phone}</a>
+            </dd>
+          </div>
+        )}
+        {store.email && (
+          <div>
+            <dt>Email</dt>
+            <dd>
+              <a href={`mailto:${store.email}`}>{store.email}</a>
+            </dd>
+          </div>
+        )}
+      </dl>
+
+      <p className={styles.cardFooter}>
+        Powered by Sedifex · Status:{' '}
+        <strong>{store.contractStatus ?? store.status ?? '—'}</strong>
+      </p>
+    </article>
+  )
 }
 
 export default function HomePage() {
@@ -142,203 +199,62 @@ export default function HomePage() {
   }, [stores, searchTerm])
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        padding: '40px 24px',
-        maxWidth: 960,
-        margin: '0 auto',
-        fontFamily:
-          'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-      }}
-    >
-      <header style={{ marginBottom: 24 }}>
-        <h1
-          style={{
-            fontSize: 32,
-            fontWeight: 800,
-            letterSpacing: '-0.04em',
-            marginBottom: 8,
-          }}
-        >
-          Sedifex store directory
-        </h1>
-        <p style={{ maxWidth: 620, color: '#4b5563', fontSize: 14 }}>
-          Browse businesses powered by Sedifex. View their location and contact
-          details, then reach out to them directly to order or visit in person.
-        </p>
-      </header>
+    <main className={styles.page}>
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <div>
+            <p className={styles.kicker}>Directory</p>
+            <h1 className={styles.title}>Sedifex store directory</h1>
+          </div>
+          <p className={styles.lead}>
+            Browse businesses powered by Sedifex. View their location and
+            contact details, then reach out to them directly to order or visit
+            in person.
+          </p>
+        </header>
 
-      <section
-        style={{
-          marginBottom: 24,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <label
-            htmlFor="search"
-            style={{
-              display: 'block',
-              fontSize: 12,
-              fontWeight: 600,
-              color: '#4b5563',
-              marginBottom: 6,
-            }}
-          >
-            Search by name, city, or country
-          </label>
-          <input
-            id="search"
-            type="text"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            placeholder="e.g. Xenom, Accra, Ghana"
-            style={{
-              width: '100%',
-              padding: '10px 14px',
-              borderRadius: 999,
-              border: '1px solid #d1d5db',
-              fontSize: 14,
-              outline: 'none',
-            }}
-          />
-        </div>
-        <span
-          style={{
-            fontSize: 12,
-            color: '#6b7280',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Showing {filteredStores.length} store
-          {filteredStores.length === 1 ? '' : 's'}
-        </span>
-      </section>
+        <section className={styles.toolbar} aria-label="Search stores">
+          <div className={styles.searchField}>
+            <label htmlFor="search">Search by name, city, or country</label>
+            <input
+              id="search"
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="e.g. Xenom, Accra, Ghana"
+            />
+          </div>
+          <span className={styles.resultCount} aria-live="polite">
+            Showing {filteredStores.length} store
+            {filteredStores.length === 1 ? '' : 's'}
+          </span>
+        </section>
 
-      {loading && (
-        <p style={{ fontSize: 14, color: '#4b5563' }}>Loading stores…</p>
-      )}
+        {loading && (
+          <p className={styles.muted} aria-live="polite">
+            Loading stores…
+          </p>
+        )}
 
-      {error && (
-        <p
-          style={{ fontSize: 14, color: '#b91c1c', marginTop: 8 }}
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
 
-      {!loading && !error && filteredStores.length === 0 && (
-        <p style={{ fontSize: 14, color: '#4b5563', marginTop: 8 }}>
-          No stores found yet. Once you activate more Sedifex workspaces and
-          mark them as public, they’ll appear here automatically.
-        </p>
-      )}
+        {!loading && !error && filteredStores.length === 0 && (
+          <p className={styles.muted} aria-live="polite">
+            No stores found yet. Once you activate more Sedifex workspaces and
+            mark them as public, they’ll appear here automatically.
+          </p>
+        )}
 
-      <section
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: 16,
-          marginTop: 16,
-        }}
-      >
-        {filteredStores.map(store => {
-          const title = store.displayName || store.name
-          const locationParts = [
-            store.addressLine1,
-            store.city,
-            store.country,
-          ].filter(Boolean)
-          const location = locationParts.join(', ')
-
-          return (
-            <article
-              key={store.id}
-              style={{
-                borderRadius: 16,
-                border: '1px solid #e5e7eb',
-                padding: '16px 18px',
-                background: '#ffffff',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  margin: 0,
-                }}
-              >
-                {title}
-              </h2>
-
-              <p style={{ margin: 0, fontSize: 13, color: '#4b5563' }}>
-                {location || 'Location coming soon'}
-              </p>
-
-              {store.publicDescription && (
-                <p
-                  style={{
-                    margin: '4px 0 0',
-                    fontSize: 13,
-                    color: '#111827',
-                  }}
-                >
-                  {store.publicDescription}
-                </p>
-              )}
-
-              <div
-                style={{
-                  marginTop: 6,
-                  fontSize: 13,
-                  color: '#4b5563',
-                }}
-              >
-                {store.phone && (
-                  <div>
-                    Phone:{' '}
-                    <a
-                      href={`tel:${store.phone}`}
-                      style={{ color: '#4338CA' }}
-                    >
-                      {store.phone}
-                    </a>
-                  </div>
-                )}
-                {store.email && (
-                  <div>
-                    Email:{' '}
-                    <a
-                      href={`mailto:${store.email}`}
-                      style={{ color: '#4338CA' }}
-                    >
-                      {store.email}
-                    </a>
-                  </div>
-                )}
-              </div>
-
-              <p
-                style={{
-                  marginTop: 8,
-                  fontSize: 12,
-                  color: '#6b7280',
-                }}
-              >
-                Powered by Sedifex · Status:{' '}
-                <strong>{store.contractStatus ?? store.status ?? '—'}</strong>
-              </p>
-            </article>
-          )
-        })}
-      </section>
+        <section className={styles.grid} aria-live="polite">
+          {filteredStores.map(store => (
+            <StoreCard store={store} key={store.id} />
+          ))}
+        </section>
+      </div>
     </main>
   )
 }
