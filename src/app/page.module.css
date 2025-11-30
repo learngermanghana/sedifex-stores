@@ -153,6 +153,93 @@
   margin-top: 4px;
 }
 
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.mapSection {
+  background: #0b1224;
+  border-radius: 18px;
+  padding: 16px;
+  color: #e2e8f0;
+  border: 1px solid #0f172a;
+  box-shadow: 0 14px 38px -20px rgba(15, 23, 42, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mapHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mapTitle {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.mapSubtitle {
+  margin: 6px 0 0;
+  color: #cbd5e1;
+  line-height: 1.6;
+  max-width: 640px;
+}
+
+.mapCanvas {
+  background: radial-gradient(circle at 30% 30%, #1f2937, #0f172a 55%);
+  border-radius: 14px;
+  border: 1px dashed #1e293b;
+  min-height: 240px;
+  position: relative;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.mapPin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 6px;
+  align-items: center;
+  justify-items: start;
+}
+
+.pinDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #c084fc;
+  box-shadow: 0 0 0 8px rgba(192, 132, 252, 0.16), 0 14px 26px -14px #a855f7;
+}
+
+.pinLabel {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 12px;
+  padding: 8px 10px;
+  color: #e2e8f0;
+  box-shadow: 0 10px 32px -18px rgba(0, 0, 0, 0.6);
+  min-width: 160px;
+}
+
+.pinLabel strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.pinLabel span {
+  display: block;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
 .card {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -162,6 +249,33 @@
   flex-direction: column;
   gap: 8px;
   box-shadow: 0 14px 38px -20px rgba(15, 23, 42, 0.25);
+}
+
+.cardActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.secondaryButton {
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  color: #111827;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 120ms ease;
+}
+
+.secondaryButton:hover {
+  border-color: #6366f1;
+  box-shadow: 0 10px 20px -14px rgba(99, 102, 241, 0.55);
+  transform: translateY(-1px);
+}
+
+.secondaryButton:active {
+  transform: translateY(0);
 }
 
 .cardEyebrow {
@@ -223,6 +337,71 @@
   margin: 6px 0 0;
   font-size: 12px;
   color: #64748b;
+}
+
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 20;
+}
+
+.dialog {
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  max-width: 620px;
+  width: 100%;
+  padding: 20px;
+  box-shadow: 0 32px 68px -34px rgba(15, 23, 42, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dialogHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.dialogDescription {
+  margin: 0;
+  color: #0f172a;
+  line-height: 1.7;
+}
+
+.dialogMeta {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  color: #475569;
+}
+
+.dialogMeta div {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.dialogMeta dt {
+  font-weight: 700;
+}
+
+.dialogMeta dd {
+  margin: 0;
+}
+
+.dialogMeta a {
+  color: #4f46e5;
 }
 
 @media (max-width: 720px) {
