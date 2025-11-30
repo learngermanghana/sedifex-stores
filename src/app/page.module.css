@@ -664,7 +664,35 @@
 }
 
 .cardFooterText {
-  margin: 0;
+  margin: 6px 0 0;
+  color: #475569;
+}
+
+.contactLinks {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.contactLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.contactLink:hover {
+  border-color: #6366f1;
+  color: #111827;
+  box-shadow: 0 8px 18px -14px rgba(99, 102, 241, 0.4);
 }
 
 .quickActions {

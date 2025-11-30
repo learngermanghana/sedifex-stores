@@ -168,10 +168,19 @@ function StoreCard({
       </dl>
 
       <div className={styles.cardFooter}>
-        <p className={styles.cardFooterText}>
-          Powered by Sedifex · Status:{' '}
-          <strong>{store.contractStatus ?? store.status ?? '—'}</strong>
-        </p>
+        <div className={styles.contactLinks}>
+          {store.phone && (
+            <a className={styles.contactLink} href={`tel:${store.phone}`}>
+              {store.phone}
+            </a>
+          )}
+          {store.email && (
+            <a className={styles.contactLink} href={`mailto:${store.email}`}>
+              {store.email}
+            </a>
+          )}
+        </div>
+
         <div className={styles.quickActions}>
           <button
             className={styles.actionButton}
@@ -202,6 +211,10 @@ function StoreCard({
           </button>
         </div>
       </div>
+
+      <p className={styles.cardFooterText}>
+        Powered by Sedifex · Status: <strong>{store.contractStatus ?? store.status ?? '—'}</strong>
+      </p>
 
       <div className={styles.cardActions}>
         <button
