@@ -45,15 +45,22 @@
 }
 
 .toolbar {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: end;
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   padding: 16px;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
   box-shadow: 0 20px 45px -24px rgba(15, 23, 42, 0.3);
+}
+
+.toolbarRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .searchField {
@@ -88,6 +95,41 @@
   font-size: 13px;
   color: #475569;
   white-space: nowrap;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.selectField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.selectField label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.selectField select {
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 15px;
+  outline: none;
+  background: #f8fafc;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.selectField select:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  background: #fff;
 }
 
 .muted {
@@ -184,11 +226,7 @@
 }
 
 @media (max-width: 720px) {
-  .toolbar {
-    grid-template-columns: 1fr;
-  }
-
-  .resultCount {
-    justify-self: flex-start;
+  .selectField {
+    min-width: 140px;
   }
 }

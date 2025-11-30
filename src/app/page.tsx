@@ -69,6 +69,21 @@ function formatLocation(store: StoreRecord): string {
   return locationParts.join(', ')
 }
 
+function buildOptions(values: (string | null)[]) {
+  const entries = new Map<string, string>()
+  values.forEach(value => {
+    if (!value) return
+    const trimmed = value.trim()
+    if (!trimmed) return
+    const key = trimmed.toLowerCase()
+    if (!entries.has(key)) entries.set(key, trimmed)
+  })
+
+  return Array.from(entries.entries())
+    .sort(([, labelA], [, labelB]) => labelA.localeCompare(labelB))
+    .map(([value, label]) => ({ value, label }))
+}
+
 function StoreCard({ store }: { store: StoreRecord }) {
   const title = store.displayName || store.name
   const location = formatLocation(store)
@@ -119,6 +134,10 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [countryFilter, setCountryFilter] = useState('all')
+  const [regionFilter, setRegionFilter] = useState('all')
+  const [contractStatusFilter, setContractStatusFilter] = useState('all')
+  const [sortBy, setSortBy] = useState<'name' | 'newest'>('name')
 
   useEffect(() => {
     let cancelled = false
@@ -179,10 +198,28 @@ export default function HomePage() {
     }
   }, [])
 
+  const normalize = (value: string | null) => (value || '').toLowerCase()
+
+  const countryOptions = useMemo(
+    () => buildOptions(stores.map(store => store.country)),
+    [stores],
+  )
+
+  const regionOptions = useMemo(
+    () => buildOptions(stores.map(store => store.region)),
+    [stores],
+  )
+
+  const contractStatusOptions = useMemo(
+    () => buildOptions(stores.map(store => store.contractStatus)),
+    [stores],
+  )
+
   const filteredStores = useMemo(() => {
-    if (!searchTerm.trim()) return stores
-    const term = searchTerm.toLowerCase()
-    return stores.filter(store => {
+    const term = searchTerm.trim().toLowerCase()
+
+    const matchesSearch = (store: StoreRecord) => {
+      if (!term) return true
       const name = (store.displayName || store.name || '').toLowerCase()
       const city = (store.city || '').toLowerCase()
       const country = (store.country || '').toLowerCase()
@@ -195,8 +232,38 @@ export default function HomePage() {
         address.includes(term) ||
         desc.includes(term)
       )
+    }
+
+    const matchesFilters = (store: StoreRecord) => {
+      const matchesCountry =
+        countryFilter === 'all' || normalize(store.country) === countryFilter
+      const matchesRegion =
+        regionFilter === 'all' || normalize(store.region) === regionFilter
+      const matchesContractStatus =
+        contractStatusFilter === 'all' ||
+        normalize(store.contractStatus) === contractStatusFilter
+
+      return matchesCountry && matchesRegion && matchesContractStatus
+    }
+
+    const sorted = stores
+      .filter(store => matchesSearch(store) && matchesFilters(store))
+      .slice()
+
+    sorted.sort((a, b) => {
+      if (sortBy === 'newest') {
+        const dateA = a.createdAt ? a.createdAt.getTime() : 0
+        const dateB = b.createdAt ? b.createdAt.getTime() : 0
+        if (dateA !== dateB) return dateB - dateA
+      }
+
+      const nameA = (a.displayName || a.name || '').toLowerCase()
+      const nameB = (b.displayName || b.name || '').toLowerCase()
+      return nameA.localeCompare(nameB)
     })
-  }, [stores, searchTerm])
+
+    return sorted
+  }, [stores, searchTerm, countryFilter, regionFilter, contractStatusFilter, sortBy])
 
   return (
     <main className={styles.page}>
@@ -214,20 +281,86 @@ export default function HomePage() {
         </header>
 
         <section className={styles.toolbar} aria-label="Search stores">
-          <div className={styles.searchField}>
-            <label htmlFor="search">Search by name, city, or country</label>
-            <input
-              id="search"
-              type="text"
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="e.g. Xenom, Accra, Ghana"
-            />
+          <div className={styles.toolbarRow}>
+            <div className={styles.searchField}>
+              <label htmlFor="search">Search by name, city, or description</label>
+              <input
+                id="search"
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="e.g. Xenom, Accra, Ghana"
+              />
+            </div>
+            <span className={styles.resultCount} aria-live="polite">
+              Showing {filteredStores.length} store
+              {filteredStores.length === 1 ? '' : 's'}
+            </span>
           </div>
-          <span className={styles.resultCount} aria-live="polite">
-            Showing {filteredStores.length} store
-            {filteredStores.length === 1 ? '' : 's'}
-          </span>
+
+          <div className={styles.toolbarRow}>
+            <div className={styles.filters}>
+              <div className={styles.selectField}>
+                <label htmlFor="country">Country/region</label>
+                <select
+                  id="country"
+                  value={countryFilter}
+                  onChange={e => setCountryFilter(e.target.value)}
+                >
+                  <option value="all">All locations</option>
+                  {countryOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.selectField}>
+                <label htmlFor="region">Region</label>
+                <select
+                  id="region"
+                  value={regionFilter}
+                  onChange={e => setRegionFilter(e.target.value)}
+                >
+                  <option value="all">All regions</option>
+                  {regionOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.selectField}>
+                <label htmlFor="contractStatus">Contract status</label>
+                <select
+                  id="contractStatus"
+                  value={contractStatusFilter}
+                  onChange={e => setContractStatusFilter(e.target.value)}
+                >
+                  <option value="all">All contract statuses</option>
+                  {contractStatusOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className={styles.selectField}>
+              <label htmlFor="sort">Sort by</label>
+              <select
+                id="sort"
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as 'name' | 'newest')}
+              >
+                <option value="name">Name (A–Z)</option>
+                <option value="newest">Newest onboarding</option>
+              </select>
+            </div>
+          </div>
         </section>
 
         {loading && (
