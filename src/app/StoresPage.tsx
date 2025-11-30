@@ -212,9 +212,7 @@ function StoreCard({
         </div>
       </div>
 
-      <p className={styles.cardFooterText}>
-        Powered by Sedifex · Status: <strong>{store.contractStatus ?? store.status ?? '—'}</strong>
-      </p>
+      <p className={styles.cardFooterText}>Powered by Sedifex</p>
 
       <div className={styles.cardActions}>
         <button
@@ -367,18 +365,6 @@ function StoreDetails({
         )}
 
         <dl className={styles.dialogMeta}>
-          {store.contractStatus && (
-            <div>
-              <dt>Contract</dt>
-              <dd>{store.contractStatus}</dd>
-            </div>
-          )}
-          {store.status && (
-            <div>
-              <dt>Status</dt>
-              <dd>{store.status}</dd>
-            </div>
-          )}
           {store.phone && (
             <div>
               <dt>Phone</dt>
@@ -422,7 +408,6 @@ export default function StoresPage() {
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
   const [countryFilter, setCountryFilter] = useState('')
   const [page, setPage] = useState(1)
   const [selectedStore, setSelectedStore] = useState<StoreRecord | null>(null)
@@ -455,7 +440,7 @@ export default function StoresPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [searchTerm, statusFilter, countryFilter])
+  }, [searchTerm, countryFilter])
 
   const filteredStores = useMemo(() => {
     const queryText = searchTerm.trim().toLowerCase()
@@ -473,19 +458,13 @@ export default function StoresPage() {
             .some(value => (value as string).toLowerCase().includes(queryText))
         : true
 
-      const matchesStatus = statusFilter
-        ? (store.contractStatus || store.status || '')
-            .toLowerCase()
-            .includes(statusFilter)
-        : true
-
       const matchesCountry = countryFilter
         ? (store.country || '').toLowerCase() === countryFilter
         : true
 
-      return matchesSearch && matchesStatus && matchesCountry
+      return matchesSearch && matchesCountry
     })
-  }, [stores, searchTerm, statusFilter, countryFilter])
+  }, [stores, searchTerm, countryFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredStores.length / PAGE_SIZE))
   const paginatedStores = filteredStores.slice(
@@ -493,9 +472,6 @@ export default function StoresPage() {
     page * PAGE_SIZE,
   )
 
-  const statusOptions = buildOptions(
-    stores.map(store => store.contractStatus ?? store.status),
-  )
   const countryOptions = buildOptions(stores.map(store => store.country))
 
   const activeCount = filteredStores.filter(store =>
@@ -514,8 +490,8 @@ export default function StoresPage() {
             <h1 className={styles.heroTitle}>Discover partnered storefronts</h1>
             <p className={styles.heroLead}>
               See every public store powered by Sedifex with a cleaner, more
-              curated browsing experience. Filter by region, contract status, or
-              search by name to find the workspace you need.
+              curated browsing experience. Filter by region or search by name
+              to find the workspace you need.
             </p>
             <div className={styles.heroPills}>
               <span className={styles.pill}>Real-time Firestore feed</span>
@@ -570,22 +546,6 @@ export default function StoresPage() {
 
           <div className={styles.toolbarRow}>
             <div className={styles.filters}>
-              <div className={styles.selectField}>
-                <label htmlFor="status">Status</label>
-                <select
-                  id="status"
-                  value={statusFilter}
-                  onChange={event => setStatusFilter(event.target.value)}
-                >
-                  <option value="">Any status</option>
-                  {statusOptions.map(option => (
-                    <option key={option.value} value={option.value.toLowerCase()}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               <div className={styles.selectField}>
                 <label htmlFor="country">Country</label>
                 <select
