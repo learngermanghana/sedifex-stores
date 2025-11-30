@@ -48,16 +48,6 @@ function toDate(value: unknown): Date | null {
   return null
 }
 
-function formatDate(value: Date | null) {
-  return value
-    ? value.toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
-    : '—'
-}
-
 function mapStore(data: Record<string, unknown>, id: string): StoreRecord {
   return {
     id,
@@ -101,16 +91,11 @@ function buildOptions(values: (string | null)[]) {
 
 // ---------- UI components ----------
 
-function StoreCard({
-  store,
-  onSelect,
-}: {
-  store: StoreRecord
-  onSelect: (store: StoreRecord) => void
-}) {
+function StoreCard({ store }: { store: StoreRecord }) {
   const title = store.displayName || store.name || 'Store'
   const location = formatLocation(store)
   const [copied, setCopied] = useState(false)
+  const storeUrl = `https://stores.sedifex.com/store/${store.id}`
 
   const handleCall = () => {
     if (!store.phone) return
@@ -215,14 +200,15 @@ function StoreCard({
       <p className={styles.cardFooterText}>Powered by Sedifex</p>
 
       <div className={styles.cardActions}>
-        <button
+        <a
           className={styles.secondaryButton}
-          type="button"
-          onClick={() => onSelect(store)}
+          href={storeUrl}
+          target="_blank"
+          rel="noreferrer"
           aria-label={`View details for ${title}`}
         >
           View details
-        </button>
+        </a>
       </div>
     </article>
   )
@@ -334,73 +320,6 @@ function StoreMap({ stores }: { stores: StoreRecord[] }) {
   )
 }
 
-function StoreDetails({
-  store,
-  onClose,
-}: {
-  store: StoreRecord
-  onClose: () => void
-}) {
-  const title = store.displayName || store.name || 'Store'
-  const location = formatLocation(store)
-
-  return (
-    <div className={styles.dialogOverlay} role="dialog" aria-modal="true">
-      <div className={styles.dialog}>
-        <div className={styles.dialogHeader}>
-          <div>
-            <p className={styles.cardEyebrow}>Store</p>
-            <h2 className={styles.cardTitle}>{title}</h2>
-            <p className={styles.cardSubtitle}>
-              {location || 'Location coming soon'}
-            </p>
-          </div>
-          <button className={styles.ghostButton} onClick={onClose} type="button">
-            Close
-          </button>
-        </div>
-
-        {store.publicDescription && (
-          <p className={styles.dialogDescription}>{store.publicDescription}</p>
-        )}
-
-        <dl className={styles.dialogMeta}>
-          {store.phone && (
-            <div>
-              <dt>Phone</dt>
-              <dd>
-                <a href={`tel:${store.phone}`}>{store.phone}</a>
-              </dd>
-            </div>
-          )}
-          {store.email && (
-            <div>
-              <dt>Email</dt>
-              <dd>
-                <a href={`mailto:${store.email}`}>{store.email}</a>
-              </dd>
-            </div>
-          )}
-          {location && (
-            <div>
-              <dt>Location</dt>
-              <dd>{location}</dd>
-            </div>
-          )}
-          <div>
-            <dt>Created</dt>
-            <dd>{formatDate(store.createdAt)}</dd>
-          </div>
-          <div>
-            <dt>Updated</dt>
-            <dd>{formatDate(store.updatedAt)}</dd>
-          </div>
-        </dl>
-      </div>
-    </div>
-  )
-}
-
 // ---------- Page ----------
 
 export default function StoresPage() {
@@ -410,7 +329,6 @@ export default function StoresPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [countryFilter, setCountryFilter] = useState('')
   const [page, setPage] = useState(1)
-  const [selectedStore, setSelectedStore] = useState<StoreRecord | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -612,7 +530,7 @@ export default function StoresPage() {
 
               {!loading &&
                 paginatedStores.map(store => (
-                  <StoreCard key={store.id} store={store} onSelect={setSelectedStore} />
+                  <StoreCard key={store.id} store={store} />
                 ))}
             </div>
 
@@ -648,10 +566,6 @@ export default function StoresPage() {
           {loading ? <SkeletonMap /> : <StoreMap stores={filteredStores} />}
         </section>
       </div>
-
-      {selectedStore && (
-        <StoreDetails store={selectedStore} onClose={() => setSelectedStore(null)} />
-      )}
     </main>
   )
 }
