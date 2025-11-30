@@ -16,6 +16,7 @@ type StoreRecord = {
   city: string | null
   region: string | null
   country: string | null
+  publicDescription: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -26,7 +27,7 @@ function toNullableString(value: unknown): string | null {
 
 function toDate(value: any): Date | null {
   if (!value) return null
-  if (value.toDate && typeof value.toDate === 'function') {
+  if (value?.toDate && typeof value.toDate === 'function') {
     try {
       return value.toDate()
     } catch {
@@ -50,6 +51,7 @@ function mapStore(data: any, id: string): StoreRecord {
     city: toNullableString(data.city),
     region: toNullableString(data.region),
     country: toNullableString(data.country),
+    publicDescription: toNullableString(data.publicDescription),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
   }
@@ -81,14 +83,19 @@ export default function HomePage() {
           mapStore(docSnap.data(), docSnap.id),
         )
 
-        // Optional: only show stores that have some contact/location info
+        // Filter out stores with *zero* public info (extra safety)
         const visible = rows.filter(
           s =>
             (s.displayName || s.name) &&
-            (s.city || s.country || s.phone || s.email || s.addressLine1),
+            (s.city ||
+              s.country ||
+              s.phone ||
+              s.email ||
+              s.addressLine1 ||
+              s.publicDescription),
         )
 
-        // ✅ Sort alphabetically by name on the client
+        // Sort alphabetically by name
         visible.sort((a, b) => {
           const nameA = (a.displayName || a.name || '').toLowerCase()
           const nameB = (b.displayName || b.name || '').toLowerCase()
@@ -123,11 +130,13 @@ export default function HomePage() {
       const city = (store.city || '').toLowerCase()
       const country = (store.country || '').toLowerCase()
       const address = (store.addressLine1 || '').toLowerCase()
+      const desc = (store.publicDescription || '').toLowerCase()
       return (
         name.includes(term) ||
         city.includes(term) ||
         country.includes(term) ||
-        address.includes(term)
+        address.includes(term) ||
+        desc.includes(term)
       )
     })
   }, [stores, searchTerm])
@@ -186,7 +195,7 @@ export default function HomePage() {
             type="text"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="e.g. Dimples, Accra, Ghana"
+            placeholder="e.g. Xenom, Accra, Ghana"
             style={{
               width: '100%',
               padding: '10px 14px',
@@ -268,9 +277,22 @@ export default function HomePage() {
               >
                 {title}
               </h2>
+
               <p style={{ margin: 0, fontSize: 13, color: '#4b5563' }}>
                 {location || 'Location coming soon'}
               </p>
+
+              {store.publicDescription && (
+                <p
+                  style={{
+                    margin: '4px 0 0',
+                    fontSize: 13,
+                    color: '#111827',
+                  }}
+                >
+                  {store.publicDescription}
+                </p>
+              )}
 
               <div
                 style={{
