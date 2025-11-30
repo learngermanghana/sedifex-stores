@@ -605,7 +605,7 @@ export default function StoresPage() {
               to find the workspace you need.
             </p>
             <div className={styles.heroPills}>
-              <span className={styles.pill}>Real-time Firestore feed</span>
+              <span className={styles.pill}>Real-time feed</span>
               <span className={styles.pill}>Curated map pins</span>
               <span className={styles.pill}>Helpful details in one tap</span>
             </div>
