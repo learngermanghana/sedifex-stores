@@ -16,5 +16,8 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
 export const db = getFirestore(app)
 
 // 🔍 debug once:
+type InternalDbShape = { _databaseId?: { projectId?: string } }
+const resolvedDb = db as InternalDbShape
+
 console.log('[firebase] config projectId =', firebaseConfig.projectId)
-console.log('[firebase] db projectId =', (db as any)._databaseId?.projectId)
+console.log('[firebase] db projectId =', resolvedDb._databaseId?.projectId)
