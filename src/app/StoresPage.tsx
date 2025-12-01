@@ -1,4 +1,3 @@
-// src/app/StoresPage.tsx
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
@@ -15,8 +14,8 @@ type StoreRecord = {
   displayName: string | null
   email: string | null
   phone: string | null
-  status: string | null          // kept but NOT shown
-  contractStatus: string | null  // kept but NOT shown
+  status: string | null          // internal only, not rendered
+  contractStatus: string | null  // internal only, not rendered
   addressLine1: string | null
   city: string | null
   region: string | null
@@ -166,7 +165,8 @@ function StoreCard({ store }: { store: StoreRecord }) {
   const location = formatLocation(store)
   const [copied, setCopied] = useState(false)
 
-  const storeUrl = `https://stores.sedifex.com/store/${store.id}`
+  // ✅ Use /stores/[id] route so we avoid 404
+  const storeUrl = `/stores/${store.id}`
 
   const featuredProducts = store.products.slice(0, 3)
 
@@ -501,7 +501,7 @@ function StoreMap({ stores }: { stores: StoreRecord[] }) {
 
           const handleClick = () => {
             if (count === 1) {
-              const url = `https://stores.sedifex.com/store/${store.id}`
+              const url = `/stores/${store.id}`
               window.open(url, '_blank', 'noreferrer')
             }
           }
@@ -720,7 +720,7 @@ export default function StoresPage() {
             <div className={styles.pagination} aria-label="Pagination">
               <button
                 className={styles.ghostButton}
-                type="button"
+                type="button'
                 onClick={() => setPage(prev => Math.max(1, prev - 1))}
                 disabled={page === 1}
               >
