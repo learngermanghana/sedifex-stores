@@ -1,17 +1,13 @@
-// src/app/api/stores/route.ts
+// app/api/stores/route.ts
 import { NextResponse } from 'next/server'
 import { collection, getDocs } from 'firebase/firestore'
-import { db } from '@/lib/firebase' // ⬅️ change to your actual path
+import { db } from '@/lib/firebaseClient' // ✅ use your existing file
 
 export async function GET() {
   try {
-    // Fetch all stores
     const storesSnap = await getDocs(collection(db, 'stores'))
-
-    // Fetch all products
     const productsSnap = await getDocs(collection(db, 'products'))
 
-    // Group products by storeId
     const productsByStoreId: Record<string, any[]> = {}
 
     productsSnap.forEach(doc => {
@@ -29,7 +25,6 @@ export async function GET() {
       })
     })
 
-    // Attach products to each store
     const stores = storesSnap.docs.map(doc => {
       const data = doc.data()
       const storeId = doc.id
