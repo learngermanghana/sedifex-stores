@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-
 import styles from './page.module.css'
 
 const PAGE_SIZE = 24
@@ -154,7 +153,10 @@ function StoreCard({ store }: { store: StoreRecord }) {
   const title = store.displayName || store.name || 'Store'
   const location = formatLocation(store)
   const [copied, setCopied] = useState(false)
+
+  // 🔗 Build public store URL from Firestore doc id
   const storeUrl = `https://stores.sedifex.com/store/${store.id}`
+
   const featuredProducts = store.products.slice(0, 3)
 
   const handleCall = () => {
@@ -403,7 +405,12 @@ function clusterPins(pins: ProjectedPin[], threshold = 4) {
       return
     }
 
-    clusters.push({ id: `cluster-${clusters.length}-${pin.store.id}`, x: pin.x, y: pin.y, pins: [pin] })
+    clusters.push({
+      id: `cluster-${clusters.length}-${pin.store.id}`,
+      x: pin.x,
+      y: pin.y,
+      pins: [pin],
+    })
   })
 
   return clusters
@@ -464,6 +471,13 @@ function StoreMap({ stores }: { stores: StoreRecord[] }) {
               ? `${count} stores near ${location}`
               : `${title} near ${location}`
 
+          const handleClick = () => {
+            if (count === 1) {
+              const url = `https://stores.sedifex.com/store/${store.id}`
+              window.open(url, '_blank', 'noreferrer')
+            }
+          }
+
           return (
             <button
               key={cluster.id}
@@ -472,9 +486,12 @@ function StoreMap({ stores }: { stores: StoreRecord[] }) {
               style={{ left: `${cluster.x}%`, top: `${cluster.y}%` }}
               title={ariaLabel}
               aria-label={ariaLabel}
+              onClick={count === 1 ? handleClick : undefined}
             >
               <span
-                className={`${styles.pinDot} ${count > 1 ? styles.clusterDot : ''}`}
+                className={`${styles.pinDot} ${
+                  count > 1 ? styles.clusterDot : ''
+                }`}
                 aria-hidden
               >
                 {count > 1 ? count : null}
@@ -511,6 +528,7 @@ export default function StoresPage() {
 
   useEffect(() => {
     let cancelled = false
+
     async function loadStores() {
       setError(null)
       setLoading(true)
@@ -528,7 +546,9 @@ export default function StoresPage() {
         if (cancelled) return
 
         if (!payload.stores) {
-          throw new Error(payload.error || 'Unable to load stores right now. Please retry.')
+          throw new Error(
+            payload.error || 'Unable to load stores right now. Please retry.',
+          )
         }
 
         const results = payload.stores.map(item =>
@@ -729,8 +749,8 @@ export default function StoresPage() {
 
             <div className={styles.listFooter}>
               <p className={styles.muted}>
-                {paginatedStores.length} result{paginatedStores.length === 1 ? '' : 's'} on
-                this page
+                {paginatedStores.length} result
+                {paginatedStores.length === 1 ? '' : 's'} on this page
               </p>
               <div className={styles.pagination} aria-label="Pagination">
                 <button
