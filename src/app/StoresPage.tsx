@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { GoogleMap, Marker, InfoWindow, useLoadScript } from '@react-google-maps/api'
 import styles from './page.module.css'
 
 const PAGE_SIZE = 24
@@ -171,10 +170,55 @@ function hasCoordinates(store: StoreRecord): store is StoreRecord & {
   )
 }
 
-const mapContainerStyle = {
-  width: '100%',
-  height: '100%',
-} as const
+function projectCoordinates(latitude: number, longitude: number) {
+  // Simple equirectangular projection into 0–100% space
+  const x = ((longitude + 180) / 360) * 100
+  const y = ((90 - latitude) / 180) * 100
+
+  const clamp = (value: number) => Math.min(97, Math.max(3, value))
+  return { x: clamp(x), y: clamp(y) }
+}
+
+type ProjectedPin = {
+  store: StoreRecord
+  location: string
+  x: number
+  y: number
+}
+
+function clusterPins(pins: ProjectedPin[], threshold = 4) {
+  const clusters: Array<{
+    id: string
+    x: number
+    y: number
+    pins: ProjectedPin[]
+  }> = []
+
+  pins.forEach(pin => {
+    const existing = clusters.find(cluster => {
+      const dx = cluster.x - pin.x
+      const dy = cluster.y - pin.y
+      return Math.hypot(dx, dy) <= threshold
+    })
+
+    if (existing) {
+      const count = existing.pins.length
+      existing.x = (existing.x * count + pin.x) / (count + 1)
+      existing.y = (existing.y * count + pin.y) / (count + 1)
+      existing.pins.push(pin)
+      return
+    }
+
+    clusters.push({
+      id: `cluster-${clusters.length}-${pin.store.id}`,
+      x: pin.x,
+      y: pin.y,
+      pins: [pin],
+    })
+  })
+
+  return clusters
+}
 
 // ---------- UI components ----------
 
@@ -183,7 +227,6 @@ function StoreCard({ store }: { store: StoreRecord }) {
   const location = formatLocation(store)
   const [copied, setCopied] = useState(false)
 
-  // Use /stores/[id] so it matches your route
   const storeUrl = `/stores/${store.id}`
 
   const featuredProducts = store.products.slice(0, 3)
@@ -386,7 +429,7 @@ function SkeletonMap() {
           <p className={styles.kicker}>Live coverage</p>
           <h2 className={styles.mapTitle}>Global Store Footprint</h2>
           <p className={styles.mapSubtitle}>
-            Visualizing your public Sedifex workspaces on a map.
+            Visualizing your public Sedifex workspaces on a globe.
           </p>
         </div>
         <span className={styles.skeletonPill} />
@@ -402,47 +445,28 @@ function SkeletonMap() {
 }
 
 function StoreMap({ stores }: { stores: StoreRecord[] }) {
-  const storesWithCoords = useMemo(
-    () => stores.filter(hasCoordinates),
-    [stores],
+  const pins = stores
+    .map(store => ({
+      store,
+      location: formatLocation(store),
+    }))
+    .filter(entry => entry.location && hasCoordinates(entry.store))
+    .map(entry => ({
+      ...entry,
+      projected: projectCoordinates(
+        entry.store.latitude as number,
+        entry.store.longitude as number,
+      ),
+    }))
+
+  const clusters = clusterPins(
+    pins.map(pin => ({
+      store: pin.store,
+      location: pin.location as string,
+      x: pin.projected.x,
+      y: pin.projected.y,
+    })),
   )
-
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-  })
-
-  const [activeStoreId, setActiveStoreId] = useState<string | null>(null)
-
-  const center = useMemo(() => {
-    if (storesWithCoords.length === 0) {
-      // Default center (roughly Africa/Europe area)
-      return { lat: 7, lng: 0 }
-    }
-    if (storesWithCoords.length === 1) {
-      return {
-        lat: storesWithCoords[0].latitude as number,
-        lng: storesWithCoords[0].longitude as number,
-      }
-    }
-    const sum = storesWithCoords.reduce(
-      (acc, store) => ({
-        lat: acc.lat + (store.latitude as number),
-        lng: acc.lng + (store.longitude as number),
-      }),
-      { lat: 0, lng: 0 },
-    )
-    return {
-      lat: sum.lat / storesWithCoords.length,
-      lng: sum.lng / storesWithCoords.length,
-    }
-  }, [storesWithCoords])
-
-  const activeStore = useMemo(
-    () => storesWithCoords.find(store => store.id === activeStoreId) || null,
-    [storesWithCoords, activeStoreId],
-  )
-
-  const zoom = storesWithCoords.length === 1 ? 12 : 3
 
   return (
     <section className={styles.mapSection} aria-label="Store locations">
@@ -451,96 +475,71 @@ function StoreMap({ stores }: { stores: StoreRecord[] }) {
           <p className={styles.kicker}>Map</p>
           <h2 className={styles.mapTitle}>Where you’ll find these stores</h2>
           <p className={styles.mapSubtitle}>
-            Explore stores directly on Google Maps. Click a pin to see details and
-            open the storefront page.
+            Pins are geocoded from each store’s address and clustered when locations
+            are close together.
           </p>
         </div>
         <span className={styles.resultCount} aria-live="polite">
-          {storesWithCoords.length} store
-          {storesWithCoords.length === 1 ? '' : 's'} on the map
+          {clusters.length} pin{clusters.length === 1 ? '' : 's'}
         </span>
       </div>
 
-      <div className={styles.mapCanvas}>
-        {!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
-          <p className={styles.muted}>
-            Google Maps API key is missing. Add{' '}
-            <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to your environment.
-          </p>
+      <div className={styles.mapCanvas} role="img" aria-label="Store map">
+        {clusters.length === 0 && (
+          <p className={styles.muted}>Add a location to see pins on the map.</p>
         )}
 
-        {loadError && (
-          <p className={styles.muted}>
-            Unable to load Google Maps right now. Please try again later.
-          </p>
-        )}
+        {clusters.map(cluster => {
+          const count = cluster.pins.length
+          const [{ store, location }] = cluster.pins
+          const title = store.displayName || store.name || 'Store'
+          const ariaLabel =
+            count > 1
+              ? `${count} stores near ${location}`
+              : `${title} near ${location}`
 
-        {!loadError && !isLoaded && (
-          <div className={styles.mapSkeleton}>
-            <div className={styles.mapSkeletonDot} />
-            <div className={styles.mapSkeletonDot} />
-            <div className={styles.mapSkeletonDot} />
-          </div>
-        )}
+          const handleClick = () => {
+            if (count === 1) {
+              const url = `/stores/${store.id}`
+              window.open(url, '_blank', 'noreferrer')
+            }
+          }
 
-        {isLoaded && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
-          <GoogleMap
-            mapContainerStyle={mapContainerStyle}
-            center={center}
-            zoom={zoom}
-            options={{
-              disableDefaultUI: false,
-              fullscreenControl: false,
-              streetViewControl: false,
-              mapTypeControl: false,
-            }}
-          >
-            {storesWithCoords.map(store => (
-              <Marker
-                key={store.id}
-                position={{
-                  lat: store.latitude as number,
-                  lng: store.longitude as number,
-                }}
-                onClick={() => setActiveStoreId(store.id)}
-              />
-            ))}
-
-            {activeStore && (
-              <InfoWindow
-                position={{
-                  lat: activeStore.latitude as number,
-                  lng: activeStore.longitude as number,
-                }}
-                onCloseClick={() => setActiveStoreId(null)}
+          return (
+            <button
+              key={cluster.id}
+              type="button"
+              className={`${styles.mapPin} ${
+                count > 1 ? styles.clusterPin : ''
+              }`}
+              style={{ left: `${cluster.x}%`, top: `${cluster.y}%` }}
+              title={ariaLabel}
+              aria-label={ariaLabel}
+              onClick={count === 1 ? handleClick : undefined}
+            >
+              <span
+                className={`${styles.pinDot} ${
+                  count > 1 ? styles.clusterDot : ''
+                }`}
+                aria-hidden
               >
-                <div className={styles.infoWindow}>
-                  <strong>
-                    {activeStore.displayName || activeStore.name || 'Store'}
-                  </strong>
-                  <p className={styles.muted}>
-                    {[
-                      activeStore.addressLine1,
-                      activeStore.city,
-                      activeStore.region,
-                      activeStore.country,
-                    ]
-                      .filter(Boolean)
-                      .join(', ')}
-                  </p>
-                  <a
-                    href={`/stores/${activeStore.id}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={styles.secondaryButton}
-                  >
-                    View details
-                  </a>
-                </div>
-              </InfoWindow>
-            )}
-          </GoogleMap>
-        )}
+                {count > 1 ? count : null}
+              </span>
+              <div className={styles.pinLabel}>
+                <strong>{count > 1 ? `${count} stores` : title}</strong>
+                <span>
+                  {count > 1
+                    ? cluster.pins
+                        .slice(0, 3)
+                        .map(pin => formatLocation(pin.store))
+                        .filter(Boolean)
+                        .join(' · ')
+                    : location}
+                </span>
+              </div>
+            </button>
+          )
+        })}
       </div>
     </section>
   )
