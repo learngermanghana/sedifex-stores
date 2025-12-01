@@ -1,3 +1,4 @@
+// src/app/StoresPage.tsx
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
@@ -14,8 +15,8 @@ type StoreRecord = {
   displayName: string | null
   email: string | null
   phone: string | null
-  status: string | null
-  contractStatus: string | null
+  status: string | null          // kept but NOT shown
+  contractStatus: string | null  // kept but NOT shown
   addressLine1: string | null
   city: string | null
   region: string | null
@@ -35,6 +36,8 @@ type StoreProduct = {
   description: string | null
   price: number | null
   currency: string | null
+  sku: string | null
+  stockCount: number | null
 }
 
 function toNullableString(value: unknown): string | null {
@@ -86,7 +89,10 @@ function mapStore(data: Record<string, unknown>, id: string): StoreRecord {
     longitude: toNumber(data.longitude),
     products: Array.isArray(data.products)
       ? (data.products as Record<string, unknown>[]).map((product, index) =>
-          mapProduct(product, (product as { id?: string }).id || `${id}-item-${index}`),
+          mapProduct(
+            product,
+            (product as { id?: string }).id || `${id}-item-${index}`,
+          ),
         )
       : [],
   }
@@ -95,11 +101,13 @@ function mapStore(data: Record<string, unknown>, id: string): StoreRecord {
 function mapProduct(data: Record<string, unknown>, id: string): StoreProduct {
   return {
     id,
-    title: toNullableString(data.title) || toNullableString(data.name),
-    category: toNullableString(data.category) || toNullableString(data.type),
+    title: toNullableString(data.name) || toNullableString(data.title),
+    category: toNullableString(data.itemType) || toNullableString(data.category),
     description: toNullableString(data.description),
     price: toNumber(data.price),
     currency: toNullableString(data.currency),
+    sku: toNullableString(data.sku),
+    stockCount: toNumber(data.stockCount),
   }
 }
 
@@ -114,21 +122,25 @@ function formatLocation(store: StoreRecord): string {
 }
 
 function formatPrice(product: StoreProduct): string | null {
-  if (product.price === null && !product.currency) return null
+  if (product.price == null && !product.currency) return null
 
-  const currency = (product.currency || 'USD').toUpperCase()
-  const normalisedCurrency = currency.length === 3 ? currency : 'USD'
+  const currency = (product.currency || '').toUpperCase()
 
-  if (product.price === null) return normalisedCurrency
+  // If we don't have a valid 3-letter code, just show the number
+  if (!currency || currency.length !== 3) {
+    return product.price != null ? `${product.price}` : null
+  }
+
+  if (product.price == null) return currency
 
   try {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: normalisedCurrency,
+      currency,
       maximumFractionDigits: 2,
     }).format(product.price)
   } catch {
-    return `${normalisedCurrency} ${product.price}`
+    return `${currency} ${product.price}`
   }
 }
 
@@ -154,7 +166,6 @@ function StoreCard({ store }: { store: StoreRecord }) {
   const location = formatLocation(store)
   const [copied, setCopied] = useState(false)
 
-  // 🔗 Build public store URL from Firestore doc id
   const storeUrl = `https://stores.sedifex.com/store/${store.id}`
 
   const featuredProducts = store.products.slice(0, 3)
@@ -200,7 +211,8 @@ function StoreCard({ store }: { store: StoreRecord }) {
           <div className={styles.productHeader}>
             <p className={styles.cardEyebrow}>Featured offerings</p>
             <span className={styles.productCount}>
-              {featuredProducts.length} item{featuredProducts.length === 1 ? '' : 's'}
+              {featuredProducts.length} item
+              {featuredProducts.length === 1 ? '' : 's'}
             </span>
           </div>
 
@@ -214,12 +226,28 @@ function StoreCard({ store }: { store: StoreRecord }) {
                       {product.title || 'Listing'}
                     </p>
                     {product.category && (
-                      <span className={styles.productBadge}>{product.category}</span>
+                      <span className={styles.productBadge}>
+                        {product.category}
+                      </span>
                     )}
                   </div>
+
                   {product.description && (
-                    <p className={styles.productDescription}>{product.description}</p>
+                    <p className={styles.productDescription}>
+                      {product.description}
+                    </p>
                   )}
+
+                  {(product.sku || product.stockCount != null) && (
+                    <p className={styles.productDescription}>
+                      {product.sku && <span>SKU: {product.sku}</span>}
+                      {product.sku && product.stockCount != null && ' · '}
+                      {product.stockCount != null && (
+                        <span>In stock: {product.stockCount}</span>
+                      )}
+                    </p>
+                  )}
+
                   {priceLabel && (
                     <p className={styles.productPrice}>{priceLabel}</p>
                   )}
@@ -482,7 +510,9 @@ function StoreMap({ stores }: { stores: StoreRecord[] }) {
             <button
               key={cluster.id}
               type="button"
-              className={`${styles.mapPin} ${count > 1 ? styles.clusterPin : ''}`}
+              className={`${styles.mapPin} ${
+                count > 1 ? styles.clusterPin : ''
+              }`}
               style={{ left: `${cluster.x}%`, top: `${cluster.y}%` }}
               title={ariaLabel}
               aria-label={ariaLabel}
@@ -557,7 +587,8 @@ export default function StoresPage() {
         setStores(results)
       } catch (err) {
         console.error(err)
-        if (!cancelled) setError('Unable to load stores right now. Please retry.')
+        if (!cancelled)
+          setError('Unable to load stores right now. Please retry.')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -605,9 +636,6 @@ export default function StoresPage() {
 
   const countryOptions = buildOptions(stores.map(store => store.country))
 
-  const activeCount = filteredStores.filter(store =>
-    (store.contractStatus || store.status || '').toLowerCase().includes('active'),
-  ).length
   const countryCount = new Set(
     filteredStores.map(store => (store.country || '').toLowerCase()).filter(Boolean),
   ).size
@@ -640,11 +668,6 @@ export default function StoresPage() {
               <p className={styles.statLabel}>In view</p>
               <p className={styles.statValue}>{filteredStores.length}</p>
               <p className={styles.statHint}>Respecting your filters</p>
-            </div>
-            <div className={styles.statCard}>
-              <p className={styles.statLabel}>Active partners</p>
-              <p className={styles.statValue}>{activeCount}</p>
-              <p className={styles.statHint}>Marked as active</p>
             </div>
             <div className={styles.statCard}>
               <p className={styles.statLabel}>Countries</p>
@@ -721,7 +744,9 @@ export default function StoresPage() {
         <section className={styles.layout}>
           <div className={styles.listPanel}>
             <div
-              className={`${styles.grid} ${loading ? styles.gridSkeleton : ''}`}
+              className={`${styles.grid} ${
+                loading ? styles.gridSkeleton : ''
+              }`}
             >
               {loading &&
                 Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
@@ -732,10 +757,13 @@ export default function StoresPage() {
                 <div className={styles.emptyCard}>
                   <div className={styles.emptyIcon} />
                   <div>
-                    <h3 className={styles.emptyTitle}>No stores match this view</h3>
+                    <h3 className={styles.emptyTitle}>
+                      No stores match this view
+                    </h3>
                     <p className={styles.emptyCopy}>
-                      Adjust your filters or clear the search to see more partners.
-                      We’ll keep the canvas fresh as new stores go live.
+                      Adjust your filters or clear the search to see more
+                      partners. We’ll keep the canvas fresh as new stores go
+                      live.
                     </p>
                   </div>
                 </div>
