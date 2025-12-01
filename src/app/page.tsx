@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://stores.sedifex.com'),
   title: 'Sedifex Stores Directory · Powered storefronts',
   description:
-    'Browse public storefronts powered by Sedifex. Filter by region, contract status, and country to find the workspace you need.',
+    'Browse public storefronts powered by Sedifex. Filter by region and country to find the workspace you need.',
   keywords: [
     'Sedifex',
     'Sedifex stores',
@@ -14,6 +14,7 @@ export const metadata: Metadata = {
     'inventory',
     'retail',
     'store directory',
+    'storefronts',
   ],
   alternates: {
     canonical: '/',
