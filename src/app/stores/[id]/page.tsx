@@ -1,6 +1,9 @@
+import Link from 'next/link'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import styles from '../../page.module.css'
+
+import { buildAbsoluteUrl, siteName } from '@/lib/siteMetadata'
 
 type StoreProduct = {
   id: string
@@ -26,6 +29,10 @@ type StoreRecord = {
   country: string | null
   publicDescription: string | null
   products: StoreProduct[]
+  website?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  updatedAt?: unknown
 }
 
 function formatLocation(store: StoreRecord) {
@@ -58,10 +65,7 @@ function formatPrice(product: StoreProduct): string | null {
 }
 
 async function fetchStore(id: string): Promise<StoreRecord> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-
-  const res = await fetch(`${baseUrl}/api/stores`, {
+  const res = await fetch(buildAbsoluteUrl('/api/stores'), {
     cache: 'no-store',
   })
 
@@ -114,10 +118,63 @@ export default async function StorePage({
   const store = await fetchStore(params.id)
   const title = store.displayName || store.name || 'Store'
   const location = formatLocation(store)
+  const storeUrl = buildAbsoluteUrl(`/stores/${store.id}`)
+
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'Store',
+    name: title,
+    description: store.publicDescription || undefined,
+    url: storeUrl,
+    telephone: store.phone || undefined,
+    address: location
+      ? {
+          '@type': 'PostalAddress',
+          streetAddress: store.addressLine1 || undefined,
+          addressLocality: store.city || undefined,
+          addressRegion: store.region || undefined,
+          addressCountry: store.country || undefined,
+        }
+      : undefined,
+    geo:
+      store.latitude != null && store.longitude != null
+        ? {
+            '@type': 'GeoCoordinates',
+            latitude: store.latitude,
+            longitude: store.longitude,
+          }
+        : undefined,
+    sameAs: store.website ? [store.website] : undefined,
+    makesOffer:
+      store.products.length > 0
+        ? store.products.slice(0, 10).map(product => ({
+            '@type': 'Offer',
+            name: product.title || 'Product',
+            description: product.description || undefined,
+            price: product.price ?? undefined,
+            priceCurrency: product.currency || undefined,
+            sku: product.sku || undefined,
+            availability:
+              typeof product.stockCount === 'number'
+                ? product.stockCount > 0
+                  ? 'https://schema.org/InStock'
+                  : 'https://schema.org/OutOfStock'
+                : undefined,
+          }))
+        : undefined,
+    brand: siteName,
+  }
 
   return (
     <main className={styles.page}>
       <div className={styles.container}>
+        <script
+          type="application/ld+json"
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(structuredData),
+          }}
+        />
         <section className={styles.hero}>
           <div className={styles.heroText}>
             <span className={styles.heroBadge}>Sedifex Storefront</span>
@@ -158,7 +215,7 @@ export default async function StorePage({
 
               <p className={styles.cardFooterText}>
                 Powered by Sedifex ·{' '}
-                <a href="/">Back to all stores</a>
+                <Link href="/">Back to all stores</Link>
               </p>
             </div>
 
