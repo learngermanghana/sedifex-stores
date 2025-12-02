@@ -14,6 +14,7 @@ type StoreRecord = {
   displayName: string | null
   email: string | null
   phone: string | null
+  website: string | null
   status: string | null          // internal only, not rendered
   contractStatus: string | null  // internal only, not rendered
   addressLine1: string | null
@@ -75,6 +76,8 @@ function mapStore(data: Record<string, unknown>, id: string): StoreRecord {
     displayName: toNullableString(data.displayName),
     email: toNullableString(data.email),
     phone: toNullableString(data.phone),
+    website: toNullableString((data as { website?: string }).website) ||
+      toNullableString((data as { url?: string }).url),
     status: toNullableString(data.status),
     contractStatus: toNullableString(data.contractStatus),
     addressLine1: toNullableString(data.addressLine1),
@@ -141,6 +144,15 @@ function formatPrice(product: StoreProduct): string | null {
   } catch {
     return `${currency} ${product.price}`
   }
+}
+
+function formatPriceBand(product: StoreProduct): string | null {
+  if (product.price == null) return null
+
+  if (product.price < 25) return '$'
+  if (product.price < 100) return '$$'
+  if (product.price < 250) return '$$$'
+  return '$$$$'
 }
 
 function buildOptions(values: (string | null)[]) {
@@ -225,11 +237,17 @@ function clusterPins(pins: ProjectedPin[], threshold = 4) {
 function StoreCard({ store }: { store: StoreRecord }) {
   const title = store.displayName || store.name || 'Store'
   const location = formatLocation(store)
-  const [copied, setCopied] = useState(false)
+  const [copyStatus, setCopyStatus] = useState<'address' | 'email' | null>(null)
+  const [copyError, setCopyError] = useState<string | null>(null)
 
   const storeUrl = `/stores/${store.id}`
 
+  const totalProducts = store.products.length
   const featuredProducts = store.products.slice(0, 3)
+  const productCountLabel =
+    totalProducts > featuredProducts.length
+      ? `${featuredProducts.length} of ${totalProducts} items`
+      : `${featuredProducts.length} item${featuredProducts.length === 1 ? '' : 's'}`
 
   const handleCall = () => {
     if (!store.phone) return
@@ -241,16 +259,39 @@ function StoreCard({ store }: { store: StoreRecord }) {
     window.location.href = `mailto:${store.email}`
   }
 
+  const handleCopyEmail = async () => {
+    if (!store.email) return
+
+    try {
+      await navigator.clipboard.writeText(store.email)
+      setCopyStatus('email')
+      setCopyError(null)
+      setTimeout(() => setCopyStatus(null), 1500)
+    } catch {
+      setCopyStatus(null)
+      setCopyError('Unable to copy right now. Please retry.')
+      setTimeout(() => setCopyError(null), 2000)
+    }
+  }
+
   const handleCopyAddress = async () => {
     if (!location) return
 
     try {
       await navigator.clipboard.writeText(location)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      setCopyStatus('address')
+      setCopyError(null)
+      setTimeout(() => setCopyStatus(null), 1500)
     } catch {
-      setCopied(false)
+      setCopyStatus(null)
+      setCopyError('Unable to copy right now. Please retry.')
+      setTimeout(() => setCopyError(null), 2000)
     }
+  }
+
+  const handleVisitWebsite = () => {
+    if (!store.website) return
+    window.open(store.website, '_blank', 'noreferrer')
   }
 
   return (
@@ -272,23 +313,41 @@ function StoreCard({ store }: { store: StoreRecord }) {
           <div className={styles.productHeader}>
             <p className={styles.cardEyebrow}>Featured offerings</p>
             <span className={styles.productCount}>
-              {featuredProducts.length} item
-              {featuredProducts.length === 1 ? '' : 's'}
+              {productCountLabel}
             </span>
           </div>
 
           <ul className={styles.productList}>
             {featuredProducts.map(product => {
               const priceLabel = formatPrice(product)
+              const priceBand = formatPriceBand(product)
+              const badges = [
+                product.category
+                  ? { label: product.category, tone: styles.badgeInfo }
+                  : null,
+                product.stockCount != null && product.stockCount > 0
+                  ? { label: 'In stock', tone: styles.badgeSuccess }
+                  : null,
+                priceBand
+                  ? { label: `Price: ${priceBand}`, tone: styles.badgeMuted }
+                  : null,
+              ].filter(Boolean) as { label: string; tone: string }[]
               return (
                 <li key={product.id} className={styles.productItem}>
                   <div className={styles.productTitleRow}>
                     <p className={styles.productTitle}>
                       {product.title || 'Listing'}
                     </p>
-                    {product.category && (
-                      <span className={styles.productBadge}>
-                        {product.category}
+                    {badges.length > 0 && (
+                      <span className={styles.badgeRow}>
+                        {badges.map(badge => (
+                          <span
+                            key={badge.label}
+                            className={`${styles.productBadge} ${badge.tone}`}
+                          >
+                            {badge.label}
+                          </span>
+                        ))}
                       </span>
                     )}
                   </div>
@@ -318,9 +377,17 @@ function StoreCard({ store }: { store: StoreRecord }) {
           </ul>
 
           <p className={styles.productHint}>
-            Chat, call, or email the store directly to learn more—online checkout is
-            disabled.
+            Chat, call, email, or visit the store website to learn more. Copy
+            contact details for quick sharing—online checkout is disabled.
           </p>
+
+          {totalProducts > featuredProducts.length && (
+            <p className={styles.productHint}>
+              Plus {totalProducts - featuredProducts.length} more item
+              {totalProducts - featuredProducts.length === 1 ? '' : 's'} listed
+              with the store.
+            </p>
+          )}
         </div>
       )}
 
@@ -341,6 +408,16 @@ function StoreCard({ store }: { store: StoreRecord }) {
             </dd>
           </div>
         )}
+        {store.website && (
+          <div>
+            <dt>Website</dt>
+            <dd>
+              <a href={store.website} target="_blank" rel="noreferrer">
+                {store.website}
+              </a>
+            </dd>
+          </div>
+        )}
       </dl>
 
       <div className={styles.cardFooter}>
@@ -353,6 +430,16 @@ function StoreCard({ store }: { store: StoreRecord }) {
           {store.email && (
             <a className={styles.contactLink} href={`mailto:${store.email}`}>
               {store.email}
+            </a>
+          )}
+          {store.website && (
+            <a
+              className={styles.contactLink}
+              href={store.website}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Visit website
             </a>
           )}
         </div>
@@ -379,13 +466,34 @@ function StoreCard({ store }: { store: StoreRecord }) {
           <button
             className={styles.actionButton}
             type="button"
+            onClick={handleCopyEmail}
+            disabled={!store.email}
+            aria-label={store.email ? `Copy ${store.email}` : 'Email unavailable'}
+          >
+            {copyStatus === 'email' ? 'Copied email' : 'Copy email'}
+          </button>
+          <button
+            className={styles.actionButton}
+            type="button"
             onClick={handleCopyAddress}
             disabled={!location}
             aria-label={location ? `Copy ${location}` : 'Address unavailable'}
           >
-            {copied ? 'Copied' : 'Copy address'}
+            {copyStatus === 'address' ? 'Copied address' : 'Copy address'}
+          </button>
+          <button
+            className={styles.actionButton}
+            type="button"
+            onClick={handleVisitWebsite}
+            disabled={!store.website}
+            aria-label={
+              store.website ? `Visit ${store.website}` : 'Website unavailable'
+            }
+          >
+            Visit website
           </button>
         </div>
+        {copyError && <p className={styles.copyError}>{copyError}</p>}
       </div>
 
       <p className={styles.cardFooterText}>Powered by Sedifex</p>
