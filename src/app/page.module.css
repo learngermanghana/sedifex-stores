@@ -768,6 +768,11 @@
   color: #64748b;
 }
 
+.productToggle {
+  align-self: flex-start;
+  padding: 6px 10px;
+}
+
 .meta {
   margin: 2px 0 0;
   display: grid;

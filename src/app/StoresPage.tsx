@@ -239,15 +239,21 @@ function StoreCard({ store }: { store: StoreRecord }) {
   const location = formatLocation(store)
   const [copyStatus, setCopyStatus] = useState<'address' | 'email' | null>(null)
   const [copyError, setCopyError] = useState<string | null>(null)
+  const [showAllProducts, setShowAllProducts] = useState(false)
 
   const storeUrl = `/stores/${store.id}`
 
   const totalProducts = store.products.length
-  const featuredProducts = store.products.slice(0, 3)
-  const productCountLabel =
-    totalProducts > featuredProducts.length
-      ? `${featuredProducts.length} of ${totalProducts} items`
-      : `${featuredProducts.length} item${featuredProducts.length === 1 ? '' : 's'}`
+  const canToggleProducts = totalProducts > 3
+  const displayedProducts =
+    canToggleProducts && showAllProducts
+      ? store.products
+      : store.products.slice(0, 3)
+  const productCountLabel = canToggleProducts
+    ? showAllProducts
+      ? `Showing all ${totalProducts} items`
+      : `${displayedProducts.length} of ${totalProducts} items`
+    : `${totalProducts} item${totalProducts === 1 ? '' : 's'}`
 
   const handleCall = () => {
     if (!store.phone) return
@@ -308,7 +314,7 @@ function StoreCard({ store }: { store: StoreRecord }) {
         <p className={styles.cardDescription}>{store.publicDescription}</p>
       )}
 
-      {featuredProducts.length > 0 && (
+      {displayedProducts.length > 0 && (
         <div className={styles.productPanel}>
           <div className={styles.productHeader}>
             <p className={styles.cardEyebrow}>Featured offerings</p>
@@ -318,7 +324,7 @@ function StoreCard({ store }: { store: StoreRecord }) {
           </div>
 
           <ul className={styles.productList}>
-            {featuredProducts.map(product => {
+            {displayedProducts.map(product => {
               const priceLabel = formatPrice(product)
               const priceBand = formatPriceBand(product)
               const badges = [
@@ -381,10 +387,21 @@ function StoreCard({ store }: { store: StoreRecord }) {
             contact details for quick sharing—online checkout is disabled.
           </p>
 
-          {totalProducts > featuredProducts.length && (
+          {canToggleProducts && (
+            <button
+              type="button"
+              className={`${styles.ghostButton} ${styles.productToggle}`}
+              onClick={() => setShowAllProducts(value => !value)}
+              aria-expanded={showAllProducts}
+            >
+              {showAllProducts ? 'View fewer products' : 'View more products'}
+            </button>
+          )}
+
+          {totalProducts > displayedProducts.length && (
             <p className={styles.productHint}>
-              Plus {totalProducts - featuredProducts.length} more item
-              {totalProducts - featuredProducts.length === 1 ? '' : 's'} listed
+              Plus {totalProducts - displayedProducts.length} more item
+              {totalProducts - displayedProducts.length === 1 ? '' : 's'} listed
               with the store.
             </p>
           )}
