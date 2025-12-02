@@ -3,12 +3,14 @@ import { NextResponse } from 'next/server'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebaseClient' // ✅ use your existing file
 
+type ProductRecord = Record<string, unknown> & { id: string }
+
 export async function GET() {
   try {
     const storesSnap = await getDocs(collection(db, 'stores'))
     const productsSnap = await getDocs(collection(db, 'products'))
 
-    const productsByStoreId: Record<string, any[]> = {}
+    const productsByStoreId: Record<string, ProductRecord[]> = {}
 
     productsSnap.forEach(doc => {
       const data = doc.data()

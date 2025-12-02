@@ -2,16 +2,24 @@
 import type { Metadata } from 'next'
 import './globals.css'
 
+import { siteName, siteUrl } from '@/lib/siteMetadata'
+
 export const metadata: Metadata = {
-  title: 'Sedifex store directory',
+  metadataBase: new URL(siteUrl),
+  title: `${siteName} directory`,
   description:
     'Browse businesses powered by Sedifex. View their location and contact details, then reach out directly to order or visit in person.',
   openGraph: {
-    title: 'Sedifex store directory',
+    title: `${siteName} directory`,
     description:
       'Discover retail stores, pharmacies, restaurants, and more that run on Sedifex POS.',
     type: 'website',
-    url: 'https://stores.sedifex.com', // or your final domain when ready
+    url: siteUrl,
+    siteName,
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 }
 

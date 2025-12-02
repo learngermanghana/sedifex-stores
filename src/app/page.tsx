@@ -2,9 +2,11 @@
 import type { Metadata } from 'next'
 import StoresPage from './StoresPage'
 
+import { siteName, siteUrl } from '@/lib/siteMetadata'
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://stores.sedifex.com'),
-  title: 'Sedifex Stores Directory · Powered storefronts',
+  metadataBase: new URL(siteUrl),
+  title: `${siteName} Directory · Powered storefronts`,
   description:
     'Browse public storefronts powered by Sedifex. Filter by region and country to find the workspace you need.',
   keywords: [
@@ -20,16 +22,16 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   openGraph: {
-    title: 'Sedifex Stores Directory',
+    title: `${siteName} Directory`,
     description:
       'Discover public stores powered by Sedifex across different countries and regions.',
-    url: 'https://stores.sedifex.com/',
-    siteName: 'Sedifex Stores',
+    url: `${siteUrl}/`,
+    siteName,
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Sedifex Stores Directory',
+    title: `${siteName} Directory`,
     description:
       'Discover public stores powered by Sedifex across different countries and regions.',
   },
