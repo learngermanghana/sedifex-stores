@@ -725,6 +725,31 @@
   border: 1px solid rgba(99, 102, 241, 0.25);
 }
 
+.badgeRow {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.badgeInfo {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: #4338ca;
+}
+
+.badgeSuccess {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #15803d;
+}
+
+.badgeMuted {
+  background: rgba(148, 163, 184, 0.18);
+  border-color: rgba(148, 163, 184, 0.36);
+  color: #0f172a;
+}
+
 .productDescription {
   margin: 6px 0 0;
   color: #475569;
@@ -817,6 +842,12 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.copyError {
+  margin: 6px 0 0;
+  color: #b91c1c;
+  font-size: 12px;
 }
 
 .actionButton {
