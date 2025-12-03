@@ -242,6 +242,10 @@ function StoreCard({ store }: { store: StoreRecord }) {
   const [copyError, setCopyError] = useState<string | null>(null)
   const [showAllProducts, setShowAllProducts] = useState(false)
 
+  const locationPills = [store.city, store.region, store.country]
+    .filter(Boolean)
+    .map(value => value as string)
+
   const storeUrl = `/stores/${store.id}`
 
   const totalProducts = store.products.length
@@ -318,12 +322,34 @@ function StoreCard({ store }: { store: StoreRecord }) {
 
   return (
     <article className={styles.card}>
-      <header className={styles.cardHeader}>
-        <p className={styles.cardEyebrow}>Store</p>
-        <h2 className={styles.cardTitle}>{title}</h2>
-        <p className={styles.cardSubtitle}>
-          {location || 'Location coming soon'}
-        </p>
+      <header className={styles.cardHero}>
+        <div className={styles.cardAvatar} aria-hidden>
+          {title.charAt(0).toUpperCase()}
+        </div>
+        <div className={styles.cardHeading}>
+          <div className={styles.cardTitleRow}>
+            <div>
+              <p className={styles.cardEyebrow}>Store</p>
+              <h2 className={styles.cardTitle}>{title}</h2>
+            </div>
+            <span className={styles.cardBadge}>Public listing</span>
+          </div>
+          <p className={styles.cardSubtitle}>
+            {location || 'Location coming soon'}
+          </p>
+          {locationPills.length > 0 && (
+            <div className={styles.badgeRow}>
+              {locationPills.map(value => (
+                <span
+                  key={value}
+                  className={`${styles.productBadge} ${styles.badgeMuted} ${styles.locationBadge}`}
+                >
+                  {value}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </header>
 
       {store.publicDescription && (
@@ -424,34 +450,38 @@ function StoreCard({ store }: { store: StoreRecord }) {
         </div>
       )}
 
-      <dl className={styles.meta}>
+      <div className={styles.detailsGrid}>
         {store.phone && (
-          <div>
-            <dt>Phone</dt>
-            <dd>
+          <div className={styles.detailCard}>
+            <p className={styles.detailLabel}>Phone</p>
+            <p className={styles.detailValue}>
               <a href={`tel:${store.phone}`}>{store.phone}</a>
-            </dd>
+            </p>
           </div>
         )}
         {store.email && (
-          <div>
-            <dt>Email</dt>
-            <dd>
+          <div className={styles.detailCard}>
+            <p className={styles.detailLabel}>Email</p>
+            <p className={styles.detailValue}>
               <a href={`mailto:${store.email}`}>{store.email}</a>
-            </dd>
+            </p>
           </div>
         )}
         {store.website && (
-          <div>
-            <dt>Website</dt>
-            <dd>
+          <div className={styles.detailCard}>
+            <p className={styles.detailLabel}>Website</p>
+            <p className={styles.detailValue}>
               <a href={store.website} target="_blank" rel="noreferrer">
                 {store.website}
               </a>
-            </dd>
+            </p>
           </div>
         )}
-      </dl>
+        <div className={styles.detailCard}>
+          <p className={styles.detailLabel}>Catalog</p>
+          <p className={styles.detailValue}>{totalProducts} item(s)</p>
+        </div>
+      </div>
 
       <div className={styles.cardFooter}>
         <div className={styles.contactLinks}>

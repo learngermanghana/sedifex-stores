@@ -1,6 +1,6 @@
 .page {
   min-height: 100vh;
-  padding: 48px 24px 72px;
+  padding: 56px 26px 80px;
   background: radial-gradient(circle at 20% 20%, #eef2ff 0, transparent 32%),
     radial-gradient(circle at 80% 0%, #d9f3ff 0, transparent 28%),
     linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
@@ -8,11 +8,11 @@
 }
 
 .container {
-  max-width: 1180px;
+  max-width: 1320px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 26px;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
 }
@@ -130,8 +130,8 @@
 .toolbar {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px;
+  gap: 16px;
+  padding: 20px;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 18px;
@@ -240,9 +240,9 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-  margin-top: 4px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px;
+  margin-top: 6px;
 }
 
 .gridSkeleton {
@@ -252,8 +252,8 @@
 .listPanel {
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  padding: 14px;
+  border-radius: 20px;
+  padding: 16px;
   box-shadow: 0 16px 36px -26px rgba(15, 23, 42, 0.35);
   display: flex;
   flex-direction: column;
@@ -270,8 +270,8 @@
 
 .layout {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  gap: 20px;
   align-items: start;
 }
 
@@ -291,6 +291,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: sticky;
+  top: 18px;
 }
 
 .mapHeader {
@@ -438,10 +440,10 @@
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 18px;
-  padding: 16px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   box-shadow: 0 14px 38px -20px rgba(15, 23, 42, 0.25);
   position: relative;
   overflow: hidden;
@@ -455,7 +457,6 @@
   z-index: 0;
 }
 
-.cardHeader,
 .card > * {
   position: relative;
   z-index: 1;
@@ -642,6 +643,50 @@
   margin: 0;
 }
 
+.cardHero {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.cardAvatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: inline-grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 18px;
+  color: #0f172a;
+  background: radial-gradient(circle at 30% 20%, #eef2ff, #c7d2fe);
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 10px 24px -18px rgba(99, 102, 241, 0.5);
+}
+
+.cardHeading {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+.cardTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cardBadge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  background: rgba(99, 102, 241, 0.08);
+  color: #4338ca;
+  font-weight: 700;
+  font-size: 12px;
+}
+
 .cardTitle {
   margin: 0;
   font-size: 18px;
@@ -653,6 +698,12 @@
   margin: 0;
   font-size: 14px;
   color: #475569;
+}
+
+.locationBadge {
+  background: rgba(148, 163, 184, 0.16);
+  border-color: rgba(148, 163, 184, 0.32);
+  color: #0f172a;
 }
 
 .cardDescription {
@@ -781,23 +832,40 @@
   color: #475569;
 }
 
-.meta div {
-  display: grid;
-  grid-template-columns: 70px 1fr;
-  align-items: center;
-  gap: 8px;
-}
-
-.meta dt {
-  font-weight: 600;
-}
-
-.meta dd {
-  margin: 0;
-}
-
 .meta a {
   color: #4f46e5;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.detailCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  display: grid;
+  gap: 6px;
+}
+
+.detailLabel {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.detailValue {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 700;
+  word-break: break-word;
 }
 
 .cardFooter {
@@ -957,6 +1025,10 @@
 
   .layout {
     grid-template-columns: 1fr;
+  }
+
+  .mapSection {
+    position: static;
   }
 }
 
