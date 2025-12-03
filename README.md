@@ -2,6 +2,25 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Configure environment variables
+
+The app expects Firebase credentials to load store and product data from Firestore. Copy the example file and provide values from your Firebase project (used by `src/lib/firebaseClient.ts`).
+
+```bash
+cp .env.example .env.local
+# then edit .env.local to match your Firebase project
+```
+
+At minimum, set:
+
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+
+Without these values, the `/api/stores` endpoint cannot reach Firestore and store pages (e.g., `/stores/<storeId>`) will 404 because no data is returned.
+
+### Run the development server
+
 First, run the development server:
 
 ```bash
