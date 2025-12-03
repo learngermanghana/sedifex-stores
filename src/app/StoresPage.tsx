@@ -237,7 +237,8 @@ function clusterPins(pins: ProjectedPin[], threshold = 4) {
 function StoreCard({ store }: { store: StoreRecord }) {
   const title = store.displayName || store.name || 'Store'
   const location = formatLocation(store)
-  const [copyStatus, setCopyStatus] = useState<'address' | 'email' | null>(null)
+  const [copyStatus, setCopyStatus] =
+    useState<'address' | 'email' | 'link' | null>(null)
   const [copyError, setCopyError] = useState<string | null>(null)
   const [showAllProducts, setShowAllProducts] = useState(false)
 
@@ -286,6 +287,21 @@ function StoreCard({ store }: { store: StoreRecord }) {
     try {
       await navigator.clipboard.writeText(location)
       setCopyStatus('address')
+      setCopyError(null)
+      setTimeout(() => setCopyStatus(null), 1500)
+    } catch {
+      setCopyStatus(null)
+      setCopyError('Unable to copy right now. Please retry.')
+      setTimeout(() => setCopyError(null), 2000)
+    }
+  }
+
+  const handleCopyStoreLink = async () => {
+    const fullUrl = `${window.location.origin}${storeUrl}`
+
+    try {
+      await navigator.clipboard.writeText(fullUrl)
+      setCopyStatus('link')
       setCopyError(null)
       setTimeout(() => setCopyStatus(null), 1500)
     } catch {
@@ -516,15 +532,14 @@ function StoreCard({ store }: { store: StoreRecord }) {
       <p className={styles.cardFooterText}>Powered by Sedifex</p>
 
       <div className={styles.cardActions}>
-        <a
+        <button
           className={styles.secondaryButton}
-          href={storeUrl}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`View details for ${title}`}
+          type="button"
+          onClick={handleCopyStoreLink}
+          aria-label={`Copy a link to ${title}`}
         >
-          View details
-        </a>
+          {copyStatus === 'link' ? 'Link copied' : 'Copy store link'}
+        </button>
       </div>
     </article>
   )
@@ -788,7 +803,7 @@ export default function StoresPage() {
             <div className={styles.statCard}>
               <p className={styles.statLabel}>Live stores</p>
               <p className={styles.statValue}>{stores.length}</p>
-              <p className={styles.statHint}>Synced from Firestore</p>
+              <p className={styles.statHint}>Live from Sedifex</p>
             </div>
             <div className={styles.statCard}>
               <p className={styles.statLabel}>In view</p>
