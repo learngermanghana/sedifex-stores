@@ -831,11 +831,6 @@ export default function StoresPage() {
           </div>
           <div className={styles.statGrid}>
             <div className={styles.statCard}>
-              <p className={styles.statLabel}>Live stores</p>
-              <p className={styles.statValue}>{stores.length}</p>
-              <p className={styles.statHint}>Live from Sedifex</p>
-            </div>
-            <div className={styles.statCard}>
               <p className={styles.statLabel}>In view</p>
               <p className={styles.statValue}>{filteredStores.length}</p>
               <p className={styles.statHint}>Respecting your filters</p>
