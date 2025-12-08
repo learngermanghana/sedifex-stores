@@ -65,7 +65,7 @@ function formatPrice(product: StoreProduct): string | null {
 }
 
 async function fetchStore(id: string): Promise<StoreRecord> {
-  const res = await fetch(buildAbsoluteUrl('/api/stores'), {
+  const res = await fetch(await buildAbsoluteUrl('/api/stores'), {
     cache: 'no-store',
   })
 
@@ -118,7 +118,7 @@ export default async function StorePage({
   const store = await fetchStore(params.id)
   const title = store.displayName || store.name || 'Store'
   const location = formatLocation(store)
-  const storeUrl = buildAbsoluteUrl(`/stores/${store.id}`)
+  const storeUrl = await buildAbsoluteUrl(`/stores/${store.id}`)
 
   const structuredData = {
     '@context': 'https://schema.org',
