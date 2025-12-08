@@ -8,9 +8,9 @@ const normalizedFallbackSiteUrl = rawSiteUrl.replace(/\/+$/, '')
 export const siteUrl = normalizedFallbackSiteUrl
 export const siteName = 'Sedifex Stores'
 
-function resolveRuntimeSiteUrl(): string {
+async function resolveRuntimeSiteUrl(): Promise<string> {
   try {
-    const headerList = headers()
+    const headerList = await headers()
 
     const host = headerList.get('host')
     if (!host) return normalizedFallbackSiteUrl
@@ -22,8 +22,8 @@ function resolveRuntimeSiteUrl(): string {
   }
 }
 
-export function buildAbsoluteUrl(path: string): string {
+export async function buildAbsoluteUrl(path: string): Promise<string> {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  const runtimeSiteUrl = resolveRuntimeSiteUrl()
+  const runtimeSiteUrl = await resolveRuntimeSiteUrl()
   return `${runtimeSiteUrl}${normalizedPath}`
 }
