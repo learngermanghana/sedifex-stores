@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next'
 
-import { buildAbsoluteUrl, siteUrl } from '@/lib/siteMetadata'
+import { siteUrl } from '@/lib/siteMetadata'
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   return {
