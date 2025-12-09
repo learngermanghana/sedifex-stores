@@ -65,8 +65,7 @@ function formatPrice(product: StoreProduct): string | null {
 }
 
 async function fetchStore(id: string): Promise<StoreRecord> {
-  const apiUrl = await buildAbsoluteUrl('/api/stores')
-  const res = await fetch(apiUrl, {
+  const res = await fetch(await buildAbsoluteUrl('/api/stores'), {
     cache: 'no-store',
   })
 

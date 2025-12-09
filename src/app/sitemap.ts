@@ -33,8 +33,7 @@ function resolveLastModified(value: unknown): Date | undefined {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
-    const apiUrl = await buildAbsoluteUrl('/api/stores')
-    const response = await fetch(apiUrl, {
+    const response = await fetch(await buildAbsoluteUrl('/api/stores'), {
       // Allow the sitemap to refresh periodically without revalidating on every request
       next: { revalidate: 60 * 60 },
     })
@@ -49,7 +48,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       payload.stores.map(async store => ({
         url: await buildAbsoluteUrl(`/stores/${store.id}`),
         lastModified: resolveLastModified(store.updatedAt) || undefined,
-      }))
+      })),
     )
 
     return [
