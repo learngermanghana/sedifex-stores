@@ -28,6 +28,12 @@ npm cache clean --force
 npm install
 ```
 
+Or use the convenience script that also removes `node_modules` and reinstalls using the lockfile:
+
+```bash
+npm run clean-install
+```
+
 The included project `.npmrc` increases fetch retries and timeouts to reduce spurious corruption errors when reaching the npm registry.
 
 ### Run the development server
