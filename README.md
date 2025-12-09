@@ -19,6 +19,17 @@ At minimum, set:
 
 Without these values, the `/api/stores` endpoint cannot reach Firestore and store pages (e.g., `/stores/<storeId>`) will 404 because no data is returned.
 
+### Avoid npm tarball warnings
+
+If `npm install` shows repeated warnings like "tarball data ... seems to be corrupted" when downloading Next.js packages, you can retry with a clean cache:
+
+```bash
+npm cache clean --force
+npm install
+```
+
+The included project `.npmrc` increases fetch retries and timeouts to reduce spurious corruption errors when reaching the npm registry.
+
 ### Run the development server
 
 First, run the development server:
